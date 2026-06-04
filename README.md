@@ -39,6 +39,7 @@ Exemplo:
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
 SEND_MESSAGE_URL="https://HOST/send"
+UPLOAD_MEDIA_URL="https://HOST/upload-media"
 APPROVE_PROFESSIONAL_URL=""
 ```
 
