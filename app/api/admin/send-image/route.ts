@@ -94,11 +94,11 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!file || !(file instanceof File)) {
+  if (!file) { 
     return NextResponse.json(
-      { error: "file is required." },
+      { error: "No file uploaded." },
       { status: 400 }
-    );
+    ); 
   }
 
   const uploadData = new FormData();
