@@ -94,16 +94,16 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!file) { 
+  if (!file || !(file instanceof Blob)) {
     return NextResponse.json(
-      { error: "No file uploaded." },
+      { error: "No valid file uploaded." },
       { status: 400 }
-    ); 
+    );
   }
 
   const uploadData = new FormData();
   uploadData.append("media_type", "image");
-  uploadData.append("file", file, file.name);
+  uploadData.append("file", file, (file as File).name);
 
   const uploadResponse = await fetch(uploadMediaUrl, {
     method: "POST",

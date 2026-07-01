@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { AlertCircle, MessageSquareText } from "lucide-react";
 
 import { needsHumanIntervention } from "@/lib/intervention";
@@ -42,6 +43,50 @@ function lastMessagePreview(conversation: Conversation) {
   return "Sem mensagens";
 }
 
+const CHAT_STATE_FILTERS = [
+  { label: "Todos", value: "ALL" },
+  { label: "Novo paciente", value: "NEW_PATIENT" },
+  { label: "Seleção profissional", value: "PROFESSIONAL_REGISTRATION" },
+  { label: "Reposição", value: "PAYMENT_RENEWAL" },
+  { label: "Dúvidas", value: "QUESTION" },
+  { label: "Feedback", value: "FEEDBACK" }
+] as const;
+
+const CHAT_STATE_LABELS: Record<string, string> = {
+  AGENT_RUNNING: "Agente ativo",
+  AGENT_STOP: "Agente parado",
+  FEEDBACK: "Feedback",
+  QUESTION: "Dúvida",
+  PROFESSIONAL_SUPPORT: "Suporte profissional",
+  NEW_PATIENT: "Novo paciente",
+  PAYMENT_RENEWAL: "Reposição",
+  PROFESSIONAL_REGISTRATION: "Cadastro profissional"
+};
+
+const CHAT_STATE_BADGE_STYLES: Record<string, string> = {
+  AGENT_RUNNING: "bg-lime-100 text-lime-800 border border-lime-200",
+  AGENT_STOP: "bg-stone-100 text-stone-800 border border-stone-200",
+  FEEDBACK: "bg-emerald-100 text-emerald-800 border border-emerald-200",
+  QUESTION: "bg-rose-100 text-rose-800 border border-rose-200",
+  PROFESSIONAL_SUPPORT: "bg-slate-100 text-slate-800 border border-slate-200",
+  NEW_PATIENT: "bg-sky-100 text-sky-800 border border-sky-200",
+  PAYMENT_RENEWAL: "bg-amber-100 text-amber-800 border border-amber-200",
+  PROFESSIONAL_REGISTRATION: "bg-violet-100 text-violet-800 border border-violet-200"
+};
+
+function normalizeChatState(chatState: string) {
+  return chatState.trim().toUpperCase().replace(/\s+/g, "_");
+}
+
+function getChatStateBadge(chatState: string) {
+  const normalized = normalizeChatState(chatState);
+  return {
+    label: CHAT_STATE_LABELS[normalized] ?? chatState,
+    colorClass:
+      CHAT_STATE_BADGE_STYLES[normalized] ?? "bg-ink/5 text-ink border border-black/10"
+  };
+}
+
 export function ConversationList({
   conversations,
   selectedPersonId,
@@ -49,14 +94,51 @@ export function ConversationList({
   error,
   onSelect
 }: Props) {
+  const [activeFilter, setActiveFilter] = useState<typeof CHAT_STATE_FILTERS[number]["value"]>("ALL");
+
+  const filteredConversations = useMemo(
+    () =>
+      conversations.filter((conversation) => {
+        if (activeFilter === "ALL") {
+          return true;
+        }
+
+        return normalizeChatState(conversation.chat_state) === activeFilter;
+      }),
+    [activeFilter, conversations]
+  );
+
   return (
     <aside className="border-b border-black/10 bg-white lg:border-b-0 lg:border-r">
       <div className="flex items-center justify-between border-b border-black/10 px-4 py-3">
         <div>
           <h2 className="text-base font-semibold">Conversas</h2>
-          <p className="text-xs text-ink/55">{conversations.length} registros</p>
+          <p className="text-xs text-ink/55">
+            {filteredConversations.length} de {conversations.length} registros
+          </p>
         </div>
         <MessageSquareText className="h-5 w-5 text-sage" aria-hidden />
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-b border-black/10 px-4 py-3">
+        {CHAT_STATE_FILTERS.map((filter) => {
+          const isActive = activeFilter === filter.value;
+
+          return (
+            <button
+              key={filter.value}
+              type="button"
+              onClick={() => setActiveFilter(filter.value)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                isActive
+                  ? "border-ink bg-ink text-white shadow-sm"
+                  : "border-black/10 bg-white text-ink/70 hover:bg-mist"
+              }`}
+            >
+              {filter.label}
+            </button>
+          );
+        })}
       </div>
 
       {error ? (
@@ -70,13 +152,16 @@ export function ConversationList({
           <div className="p-4 text-sm text-ink/60">Carregando conversas...</div>
         ) : null}
 
-        {!isLoading && conversations.length === 0 ? (
-          <div className="p-4 text-sm text-ink/60">Nenhuma conversa encontrada.</div>
+        {!isLoading && filteredConversations.length === 0 ? (
+          <div className="p-4 text-sm text-ink/60">
+            Nenhuma conversa encontrada para este filtro.
+          </div>
         ) : null}
 
-        {conversations.map((conversation) => {
+        {filteredConversations.map((conversation) => {
           const active = selectedPersonId === conversation.person_id;
           const needsHuman = needsHumanIntervention(conversation.chat_state);
+          const badge = getChatStateBadge(conversation.chat_state);
 
           return (
             <button
@@ -84,12 +169,16 @@ export function ConversationList({
               type="button"
               onClick={() => onSelect(conversation.person_id)}
               className={`block w-full border-b border-black/10 px-4 py-3 text-left transition hover:bg-mist ${
-                active ? "bg-mist" : "bg-white"
+                active
+                  ? "bg-mist"
+                  : needsHuman
+                  ? "bg-amber-50"
+                  : "bg-white"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">
+                  <div className="truncate text-sm font-semibold text-ink">
                     {conversation.name || "Sem nome"}
                   </div>
                   <div className="mt-0.5 truncate text-xs text-ink/60">
@@ -106,10 +195,10 @@ export function ConversationList({
                 </div>
               </div>
 
-              <div className="mt-2 flex items-center gap-2">
-                <p className="min-w-0 flex-1 truncate text-sm text-ink/70">
-                  {lastMessagePreview(conversation)}
-                </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${badge.colorClass}`}>
+                  {badge.label}
+                </span>
                 {needsHuman ? (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded border border-coral/30 bg-coral/10 px-2 py-1 text-xs font-medium text-coral">
                     <AlertCircle className="h-3.5 w-3.5" aria-hidden />
@@ -117,6 +206,10 @@ export function ConversationList({
                   </span>
                 ) : null}
               </div>
+
+              <p className="mt-3 truncate text-sm text-ink/70">
+                {lastMessagePreview(conversation)}
+              </p>
             </button>
           );
         })}
