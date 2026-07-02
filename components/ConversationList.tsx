@@ -49,7 +49,8 @@ const CHAT_STATE_FILTERS = [
   { label: "Seleção profissional", value: "PROFESSIONAL_REGISTRATION" },
   { label: "Reposição", value: "PAYMENT_RENEWAL" },
   { label: "Dúvidas", value: "QUESTION" },
-  { label: "Feedback", value: "FEEDBACK" }
+  { label: "Feedback", value: "FEEDBACK" },
+  { label: "Fluxo interrompido", value: "AGENT_STOP" }
 ] as const;
 
 const CHAT_STATE_LABELS: Record<string, string> = {
@@ -65,7 +66,7 @@ const CHAT_STATE_LABELS: Record<string, string> = {
 
 const CHAT_STATE_BADGE_STYLES: Record<string, string> = {
   AGENT_RUNNING: "bg-lime-100 text-lime-800 border border-lime-200",
-  AGENT_STOP: "bg-stone-100 text-stone-800 border border-stone-200",
+  AGENT_STOP: "bg-red-100 text-red-700 border border-red-200",
   FEEDBACK: "bg-emerald-100 text-emerald-800 border border-emerald-200",
   QUESTION: "bg-rose-100 text-rose-800 border border-rose-200",
   PROFESSIONAL_SUPPORT: "bg-slate-100 text-slate-800 border border-slate-200",
@@ -171,6 +172,8 @@ export function ConversationList({
               className={`block w-full border-b border-black/10 px-4 py-3 text-left transition hover:bg-mist ${
                 active
                   ? "bg-mist"
+                  : normalizeChatState(conversation.chat_state) === "AGENT_STOP"
+                  ? "bg-red-50"
                   : needsHuman
                   ? "bg-amber-50"
                   : "bg-white"
