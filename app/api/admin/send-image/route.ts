@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { prisma } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
 
 async function readResponseBody(response: Response) {
@@ -84,6 +86,7 @@ export async function POST(request: Request) {
   }
 
   const phoneNumber = formData.get("phone_number");
+  const personId = Number(formData.get("person_id"));
   const caption = formData.get("caption");
   const file = formData.get("file");
 
@@ -94,10 +97,30 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!Number.isInteger(personId) || personId <= 0) {
+    return NextResponse.json({ error: "person_id is required." }, { status: 400 });
+  }
+
   if (!file || !(file instanceof Blob)) {
     return NextResponse.json(
       { error: "No valid file uploaded." },
       { status: 400 }
+    );
+  }
+
+  const person = await prisma.person.findUnique({
+    where: { id: personId },
+    select: { phone_number: true, chat_mode: true }
+  });
+
+  if (!person || person.phone_number !== phoneNumber.trim()) {
+    return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+  }
+
+  if (person.chat_mode !== "MANUAL") {
+    return NextResponse.json(
+      { error: "A conversa precisa estar no modo Manual para enviar imagens." },
+      { status: 409 }
     );
   }
 

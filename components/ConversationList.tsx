@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, MessageSquareText } from "lucide-react";
 
-import { needsHumanIntervention } from "@/lib/intervention";
 import type { Conversation } from "@/types";
 
 type Props = {
@@ -45,17 +44,15 @@ function lastMessagePreview(conversation: Conversation) {
 
 const CHAT_STATE_FILTERS = [
   { label: "Todos", value: "ALL" },
+  { label: "Manual", value: "MANUAL" },
   { label: "Novo paciente", value: "NEW_PATIENT" },
   { label: "Seleção profissional", value: "PROFESSIONAL_REGISTRATION" },
   { label: "Reposição", value: "PAYMENT_RENEWAL" },
   { label: "Dúvidas", value: "QUESTION" },
-  { label: "Feedback", value: "FEEDBACK" },
-  { label: "Fluxo interrompido", value: "AGENT_STOP" }
+  { label: "Feedback", value: "FEEDBACK" }
 ] as const;
 
 const CHAT_STATE_LABELS: Record<string, string> = {
-  AGENT_RUNNING: "Agente ativo",
-  AGENT_STOP: "Agente parado",
   FEEDBACK: "Feedback",
   QUESTION: "Dúvida",
   PROFESSIONAL_SUPPORT: "Suporte profissional",
@@ -65,8 +62,6 @@ const CHAT_STATE_LABELS: Record<string, string> = {
 };
 
 const CHAT_STATE_BADGE_STYLES: Record<string, string> = {
-  AGENT_RUNNING: "bg-lime-100 text-lime-800 border border-lime-200",
-  AGENT_STOP: "bg-red-100 text-red-700 border border-red-200",
   FEEDBACK: "bg-emerald-100 text-emerald-800 border border-emerald-200",
   QUESTION: "bg-rose-100 text-rose-800 border border-rose-200",
   PROFESSIONAL_SUPPORT: "bg-slate-100 text-slate-800 border border-slate-200",
@@ -75,14 +70,14 @@ const CHAT_STATE_BADGE_STYLES: Record<string, string> = {
   PROFESSIONAL_REGISTRATION: "bg-violet-100 text-violet-800 border border-violet-200"
 };
 
-function normalizeChatState(chatState: string) {
-  return chatState.trim().toUpperCase().replace(/\s+/g, "_");
+function normalizeChatState(chatState: string | null) {
+  return chatState?.trim().toUpperCase().replace(/\s+/g, "_") ?? "";
 }
 
-function getChatStateBadge(chatState: string) {
+function getChatStateBadge(chatState: string | null) {
   const normalized = normalizeChatState(chatState);
   return {
-    label: CHAT_STATE_LABELS[normalized] ?? chatState,
+    label: CHAT_STATE_LABELS[normalized] ?? chatState ?? "Sem etapa",
     colorClass:
       CHAT_STATE_BADGE_STYLES[normalized] ?? "bg-ink/5 text-ink border border-black/10"
   };
@@ -102,6 +97,10 @@ export function ConversationList({
       conversations.filter((conversation) => {
         if (activeFilter === "ALL") {
           return true;
+        }
+
+        if (activeFilter === "MANUAL") {
+          return conversation.chat_mode === "MANUAL";
         }
 
         return normalizeChatState(conversation.chat_state) === activeFilter;
@@ -161,7 +160,7 @@ export function ConversationList({
 
         {filteredConversations.map((conversation) => {
           const active = selectedPersonId === conversation.person_id;
-          const needsHuman = needsHumanIntervention(conversation.chat_state);
+          const needsHuman = conversation.chat_mode === "MANUAL";
           const badge = getChatStateBadge(conversation.chat_state);
 
           return (
@@ -172,8 +171,6 @@ export function ConversationList({
               className={`block w-full border-b border-black/10 px-4 py-3 text-left transition hover:bg-mist ${
                 active
                   ? "bg-mist"
-                  : normalizeChatState(conversation.chat_state) === "AGENT_STOP"
-                  ? "bg-red-50"
                   : needsHuman
                   ? "bg-amber-50"
                   : "bg-white"
@@ -201,6 +198,9 @@ export function ConversationList({
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${badge.colorClass}`}>
                   {badge.label}
+                </span>
+                <span className="rounded-full border border-black/10 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink/65">
+                  {conversation.chat_mode === "MANUAL" ? "Manual" : "Automático"}
                 </span>
                 {needsHuman ? (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded border border-coral/30 bg-coral/10 px-2 py-1 text-xs font-medium text-coral">

@@ -10,7 +10,9 @@ const HUMAN_INTERVENTION_STATES = new Set([
   "operator_required"
 ]);
 
-export function needsHumanIntervention(chatState: string): boolean {
+export function needsHumanIntervention(chatState: string | null): boolean {
+  if (!chatState) return false;
+
   const normalized = chatState.trim().toLowerCase().replace(/[-\s]+/g, "_");
 
   return (

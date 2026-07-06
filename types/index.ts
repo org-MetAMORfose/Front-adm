@@ -1,18 +1,29 @@
 export type Channel = "TELEGRAM" | "WHATSAPP" | null;
 
+export type ChatMode = "AUTOMATIC" | "MANUAL";
+
+export type ChatState =
+  | "FEEDBACK"
+  | "QUESTION"
+  | "PROFESSIONAL_SUPPORT"
+  | "NEW_PATIENT"
+  | "PAYMENT_RENEWAL"
+  | "PROFESSIONAL_REGISTRATION";
+
 export type ProfessionalStatus =
-  | "register_pending"
-  | "under_review"
-  | "approved"
-  | "rejected"
-  | "payment_pending"
-  | "active"
-  | "inactive";
+  | "REGISTER_PENDING"
+  | "UNDER_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "PAYMENT_PENDING"
+  | "ACTIVE"
+  | "INACTIVE";
 
 export type Conversation = {
   person_id: number;
   phone_number: string;
-  chat_state: string;
+  chat_state: ChatState | null;
+  chat_mode: ChatMode;
   name: string | null;
   channel: Channel;
   person_created_at: string;
@@ -44,7 +55,6 @@ export type Professional = {
   background: string | null;
   video_platform: string | null;
   email: string | null;
-  status_id: number;
   created_at: string;
   current_status: ProfessionalStatus | null;
   status_created_at: string | null;
