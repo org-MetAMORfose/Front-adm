@@ -1,109 +1,88 @@
 import "server-only";
 
-import { query } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import type { Conversation, Message, Professional } from "@/types";
 
-function asIsoDate<T extends Record<string, unknown>>(row: T) {
-  return Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [
-      key,
-      value instanceof Date ? value.toISOString() : value
-    ])
-  ) as T;
-}
-
 export async function getConversations(): Promise<Conversation[]> {
-  const result = await query<Conversation>(
-    `
-      WITH latest_message AS (
-        SELECT DISTINCT ON (person_id)
-          id,
-          person_id,
-          content,
-          image_url,
-          document_url,
-          is_from_user,
-          created_at
-        FROM message_history
-        ORDER BY person_id, created_at DESC, id DESC
-      )
-      SELECT
-        p.id AS person_id,
-        p.phone_number,
-        p.chat_state,
-        p.name,
-        p.channel,
-        p.created_at AS person_created_at,
-        lm.id AS last_message_id,
-        lm.content AS last_message_content,
-        lm.image_url AS last_message_image_url,
-        lm.document_url AS last_message_document_url,
-        lm.is_from_user AS last_message_is_from_user,
-        lm.created_at AS last_message_created_at
-      FROM person p
-      LEFT JOIN latest_message lm ON lm.person_id = p.id
-      ORDER BY COALESCE(lm.created_at, p.created_at) DESC
-    `
-  );
+  const people = await prisma.person.findMany({
+    include: {
+      message_history: {
+        orderBy: [{ created_at: "desc" }, { id: "desc" }],
+        take: 1
+      }
+    }
+  });
 
-  return result.rows.map((row) => asIsoDate(row));
+  return people
+    .map((person) => {
+      const lastMessage = person.message_history[0];
+
+      return {
+        person_id: person.id,
+        phone_number: person.phone_number,
+        chat_state: person.chat_state,
+        chat_mode: person.chat_mode,
+        name: person.name,
+        channel: person.channel,
+        person_created_at: person.created_at.toISOString(),
+        last_message_id: lastMessage?.id ?? null,
+        last_message_content: lastMessage?.content ?? null,
+        last_message_image_url: lastMessage?.image_url ?? null,
+        last_message_document_url: lastMessage?.document_url ?? null,
+        last_message_is_from_user: lastMessage?.is_from_user ?? null,
+        last_message_created_at: lastMessage?.created_at.toISOString() ?? null
+      };
+    })
+    .sort((a, b) =>
+      (b.last_message_created_at ?? b.person_created_at).localeCompare(
+        a.last_message_created_at ?? a.person_created_at
+      )
+    );
 }
 
 export async function getMessagesByPersonId(personId: number): Promise<Message[]> {
-  const result = await query<Message>(
-    `
-      SELECT
-        id,
-        person_id,
-        created_at,
-        content,
-        image_url,
-        document_url,
-        is_from_user
-      FROM message_history
-      WHERE person_id = $1
-      ORDER BY created_at ASC, id ASC
-    `,
-    [personId]
-  );
+  const messages = await prisma.message_history.findMany({
+    where: { person_id: personId },
+    orderBy: [{ created_at: "asc" }, { id: "asc" }]
+  });
 
-  return result.rows.map((row) => asIsoDate(row));
+  return messages.map((message) => ({
+    ...message,
+    created_at: message.created_at.toISOString()
+  }));
 }
 
 export async function getProfessionalByPersonId(
   personId: number
 ): Promise<Professional | null> {
-  const result = await query<Professional>(
-    `
-      SELECT
-        pr.id,
-        pr.person_id,
-        pr.area,
-        pr.professional_register,
-        pr.register_type,
-        pr.approach,
-        pr.background,
-        pr.video_platform,
-        pr.email,
-        pr.status_id,
-        pr.created_at,
-        psh.professional_status AS current_status,
-        psh.created_at AS status_created_at
-      FROM professional pr
-      LEFT JOIN professional_status_history psh ON psh.id = pr.status_id
-      WHERE pr.person_id = $1
-      LIMIT 1
-    `,
-    [personId]
-  );
+  const professional = await prisma.professional.findUnique({
+    where: { person_id: personId },
+    include: {
+      professional_status_history: {
+        orderBy: [{ created_at: "desc" }, { id: "desc" }],
+        take: 1
+      }
+    }
+  });
 
-  return result.rows[0] ? asIsoDate(result.rows[0]) : null;
+  if (!professional) return null;
+
+  const { professional_status_history: statusHistory, ...data } = professional;
+  const currentStatus = statusHistory[0];
+
+  return {
+    ...data,
+    created_at: data.created_at.toISOString(),
+    current_status: currentStatus?.professional_status ?? null,
+    status_created_at: currentStatus?.created_at.toISOString() ?? null
+  };
 }
 
 export async function getAnyPersonId(): Promise<number | null> {
-  const result = await query<{ id: number }>(
-    "SELECT id FROM person ORDER BY created_at DESC LIMIT 1"
-  );
+  const person = await prisma.person.findFirst({
+    orderBy: { created_at: "desc" },
+    select: { id: true }
+  });
 
-  return result.rows[0]?.id ?? null;
+  return person?.id ?? null;
 }

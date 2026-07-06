@@ -1,4 +1,5 @@
 export type ImageMessageDraft = {
+  personId: number;
   phoneNumber: string;
   file: File;
   caption?: string;
@@ -7,6 +8,7 @@ export type ImageMessageDraft = {
 export async function sendImageMessage(draft: ImageMessageDraft) {
   const formData = new FormData();
 
+  formData.append("person_id", String(draft.personId));
   formData.append("phone_number", draft.phoneNumber);
 
   if (draft.caption) {

@@ -6,7 +6,7 @@ Painel fullstack em Next.js para visualizar conversas do chatbot, enviar mensage
 
 - `app/page.tsx`: tela principal com sidebar de conversas e area de chat.
 - `app/api/admin/*`: API routes server-only para leitura no PostgreSQL e forwarding HTTP.
-- `lib/db.ts`: pool `pg` usando `DATABASE_URL` apenas no servidor.
+- `lib/db.ts`: cliente Prisma compartilhado usando `DATABASE_URL` apenas no servidor.
 - `lib/queries.ts`: consultas somente leitura (`SELECT`).
 - `lib/messageSender.ts`: envio de mensagem e aprovacao via endpoints externos.
 - `components/*`: componentes client com TanStack Query e polling.

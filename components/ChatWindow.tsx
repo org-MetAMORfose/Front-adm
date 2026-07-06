@@ -8,10 +8,19 @@ import { ImagePreviewModal } from "@/components/ImagePreviewModal";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ProfessionalCard } from "@/components/ProfessionalCard";
 import { sendImageMessage } from "@/lib/imageSender";
-import type { Conversation, Message, Professional } from "@/types";
+import type { ChatMode, ChatState, Conversation, Message, Professional } from "@/types";
 
 type Props = {
   conversation: Conversation | null;
+};
+
+const CHAT_STATE_SELECT_STYLES: Record<ChatState, string> = {
+  FEEDBACK: "border-emerald-200 bg-emerald-100 text-emerald-800",
+  QUESTION: "border-rose-200 bg-rose-100 text-rose-800",
+  PROFESSIONAL_SUPPORT: "border-slate-200 bg-slate-100 text-slate-800",
+  NEW_PATIENT: "border-sky-200 bg-sky-100 text-sky-800",
+  PAYMENT_RENEWAL: "border-amber-200 bg-amber-100 text-amber-800",
+  PROFESSIONAL_REGISTRATION: "border-violet-200 bg-violet-100 text-violet-800"
 };
 
 async function fetchMessages(personId: number) {
@@ -38,7 +47,11 @@ async function fetchProfessional(personId: number) {
   return (await response.json()) as { professional: Professional | null };
 }
 
-async function sendMessage(payload: { phone_number: string; content: string }) {
+async function sendMessage(payload: {
+  person_id: number;
+  phone_number: string;
+  content: string;
+}) {
   const response = await fetch("/api/admin/send-message", {
     method: "POST",
     headers: {
@@ -50,6 +63,25 @@ async function sendMessage(payload: { phone_number: string; content: string }) {
 
   if (!response.ok) {
     throw new Error(body.error ?? "Falha ao enviar mensagem.");
+  }
+
+  return body;
+}
+
+type StateUpdate =
+  | { chat_mode: ChatMode }
+  | { chat_state: ChatState | null };
+
+async function updateConversationState(personId: number, update: StateUpdate) {
+  const response = await fetch(`/api/admin/conversations/${personId}/state`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(update)
+  });
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(body.error ?? "Falha ao atualizar o estado da conversa.");
   }
 
   return body;
@@ -96,6 +128,18 @@ export function ChatWindow({ conversation }: Props) {
     }
   });
 
+  const stateMutation = useMutation({
+    mutationFn: (update: StateUpdate) =>
+      updateConversationState(personId as number, update),
+    onSuccess: async () => {
+      setStatus("Estado da conversa atualizado.");
+      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+    onError: (error) => {
+      setStatus(error instanceof Error ? error.message : "Erro inesperado.");
+    }
+  });
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, conversation?.person_id]);
@@ -123,17 +167,25 @@ export function ChatWindow({ conversation }: Props) {
     }
 
     mutation.mutate({
+      person_id: conversation.person_id,
       phone_number: conversation.phone_number,
       content: content.trim()
     });
   }
 
-  async function handleTestSend() {
-    const message = content.trim() || "Mensagem de teste automatizado";
+  function handleStateChange(value: string) {
+    setStatus(null);
+    stateMutation.mutate({
+      chat_state: value === "state:none" ? null : (value.slice(6) as ChatState)
+    });
+  }
 
-    mutation.mutate({
-      phone_number: "5511974527717",
-      content: message
+  function handleModeToggle() {
+    if (!conversation) return;
+
+    setStatus(null);
+    stateMutation.mutate({
+      chat_mode: conversation.chat_mode === "MANUAL" ? "AUTOMATIC" : "MANUAL"
     });
   }
 
@@ -160,6 +212,7 @@ export function ChatWindow({ conversation }: Props) {
 
     try {
       await sendImageMessage({
+        personId: conversation.person_id,
         phoneNumber: conversation.phone_number,
         file: imageFile,
         caption: content.trim() || undefined
@@ -191,6 +244,11 @@ export function ChatWindow({ conversation }: Props) {
     );
   }
 
+  const isManual = conversation.chat_mode === "MANUAL";
+  const stateSelectStyle = conversation.chat_state
+    ? CHAT_STATE_SELECT_STYLES[conversation.chat_state]
+    : "border-black/10 bg-white text-ink/70";
+
   return (
     <section className="flex min-h-[60vh] flex-col overflow-hidden bg-mist lg:max-h-[calc(100vh-73px)]">
       <div className="border-b border-black/10 bg-white px-4 py-3">
@@ -201,12 +259,35 @@ export function ChatWindow({ conversation }: Props) {
             </h2>
             <p className="truncate text-sm text-ink/60">
               {conversation.phone_number} · {conversation.channel ?? "CANAL"} ·{" "}
-              {conversation.chat_state}
+              {conversation.chat_mode === "MANUAL" ? "Manual" : "Automático"} ·{" "}
+              {conversation.chat_state ?? "Sem etapa"}
             </p>
           </div>
-          <span className="rounded border border-black/10 px-3 py-1 text-xs font-medium text-ink/60">
-            Pessoa #{conversation.person_id}
-          </span>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-ink/70">
+              <span>Modo manual</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isManual}
+                aria-label="Alternar modo manual"
+                disabled={stateMutation.isPending}
+                onClick={handleModeToggle}
+                className={`relative h-6 w-11 rounded-full transition-colors ${
+                  isManual ? "bg-sage" : "bg-black/20"
+                } disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                <span
+                  className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    isManual ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </label>
+            <span className="rounded border border-black/10 px-3 py-1 text-xs font-medium text-ink/60">
+              Pessoa #{conversation.person_id}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -262,6 +343,7 @@ export function ChatWindow({ conversation }: Props) {
             <button
               type="button"
               onClick={handleImageSend}
+              disabled={!isManual}
               className="rounded bg-sage px-3 py-2 text-sm font-semibold text-white transition hover:bg-sage/90"
             >
               Enviar imagem
@@ -278,7 +360,7 @@ export function ChatWindow({ conversation }: Props) {
         ) : null}
 
         <div className="flex items-end gap-2">
-          <label className="inline-flex cursor-pointer items-center justify-center rounded border border-black/10 p-3 text-ink/70 transition hover:bg-mist">
+          <label className={`inline-flex items-center justify-center rounded border border-black/10 p-3 text-ink/70 transition ${isManual ? "cursor-pointer hover:bg-mist" : "cursor-not-allowed opacity-50"}`}>
             <ImagePlus className="h-5 w-5" aria-hidden />
             <span className="sr-only">Anexar imagem</span>
             <input
@@ -286,6 +368,7 @@ export function ChatWindow({ conversation }: Props) {
               accept="image/*"
               className="hidden"
               onChange={handleFileChange}
+              disabled={!isManual}
             />
           </label>
           <textarea
@@ -293,25 +376,39 @@ export function ChatWindow({ conversation }: Props) {
             onChange={(event) => setContent(event.target.value)}
             rows={2}
             placeholder={`Mensagem para ${conversation.phone_number}`}
+            disabled={!isManual}
             className="min-h-12 flex-1 resize-none rounded border border-black/10 bg-white px-3 py-2 text-sm outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/20"
           />
           <button
             type="submit"
-            disabled={mutation.isPending || !content.trim()}
+            disabled={!isManual || mutation.isPending || !content.trim()}
             className="inline-flex min-h-12 items-center gap-2 rounded bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Send className="h-4 w-4" aria-hidden />
             Enviar
           </button>
-          <button
-            type="button"
-            disabled={mutation.isPending}
-            onClick={handleTestSend}
-            className="min-h-12 rounded border border-black/10 px-3 py-2 text-sm font-semibold text-ink/70 transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-60"
+          <select
+            aria-label="Alterar etapa da conversa"
+            value=""
+            disabled={stateMutation.isPending}
+            onChange={(event) => handleStateChange(event.target.value)}
+            className={`min-h-12 rounded border px-3 py-2 text-sm font-semibold outline-none transition focus:ring-2 focus:ring-sage/20 disabled:cursor-not-allowed disabled:opacity-60 ${stateSelectStyle}`}
           >
-            Teste
-          </button>
+            <option value="" disabled>Alterar etapa</option>
+            <option value="state:none">Sem etapa</option>
+            <option value="state:FEEDBACK">Feedback</option>
+            <option value="state:QUESTION">Dúvidas</option>
+            <option value="state:PROFESSIONAL_SUPPORT">Suporte profissional</option>
+            <option value="state:NEW_PATIENT">Novo paciente</option>
+            <option value="state:PAYMENT_RENEWAL">Reposição</option>
+            <option value="state:PROFESSIONAL_REGISTRATION">Seleção profissional</option>
+          </select>
         </div>
+        {!isManual ? (
+          <p className="mt-2 text-sm text-amber-700">
+            Selecione o modo Manual para enviar mensagens.
+          </p>
+        ) : null}
         {status ? <p className="mt-2 text-sm text-ink/65">{status}</p> : null}
       </form>
 

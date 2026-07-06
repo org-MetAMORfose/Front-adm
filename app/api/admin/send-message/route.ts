@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { sendTextMessage } from "@/lib/messageSender";
+import { prisma } from "@/lib/db";
 import type { SendMessagePayload } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-function isValidPayload(body: unknown): body is SendMessagePayload {
+function isValidPayload(
+  body: unknown
+): body is SendMessagePayload & { person_id: number } {
   if (!body || typeof body !== "object") {
     return false;
   }
@@ -13,6 +16,9 @@ function isValidPayload(body: unknown): body is SendMessagePayload {
   const candidate = body as Record<string, unknown>;
 
   return (
+    typeof candidate.person_id === "number" &&
+    Number.isInteger(candidate.person_id) &&
+    candidate.person_id > 0 &&
     typeof candidate.phone_number === "string" &&
     candidate.phone_number.trim().length > 0 &&
     typeof candidate.content === "string" &&
@@ -33,13 +39,29 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Payload must include phone_number and content as non-empty strings."
+          "Payload must include person_id, phone_number and content."
       },
       { status: 400 }
     );
   }
 
   try {
+    const person = await prisma.person.findUnique({
+      where: { id: body.person_id },
+      select: { phone_number: true, chat_mode: true }
+    });
+
+    if (!person || person.phone_number !== body.phone_number.trim()) {
+      return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+    }
+
+    if (person.chat_mode !== "MANUAL") {
+      return NextResponse.json(
+        { error: "A conversa precisa estar no modo Manual para enviar mensagens." },
+        { status: 409 }
+      );
+    }
+
     const result = await sendTextMessage({
       phone_number: body.phone_number.trim(),
       content: body.content.trim()

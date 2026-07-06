@@ -1,36 +1,25 @@
 import "server-only";
 
-import { Pool, type QueryResultRow } from "pg";
+import { PrismaClient } from "@prisma/client";
 
-let pool: Pool | undefined;
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-export function getPool() {
+function createPrismaClient() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is not configured on the server.");
   }
 
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 5,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000
-    });
-  }
-
-  return pool;
+  return new PrismaClient();
 }
 
-export async function query<T extends QueryResultRow>(
-  text: string,
-  params: unknown[] = []
-) {
-  return getPool().query<T>(text, params);
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
 }
 
-export async function closePool() {
-  if (pool) {
-    await pool.end();
-    pool = undefined;
-  }
+export async function closeDatabase() {
+  await prisma.$disconnect();
 }
