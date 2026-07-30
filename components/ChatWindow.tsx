@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePreviewModal } from "@/components/ImagePreviewModal";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ProfessionalCard } from "@/components/ProfessionalCard";
+import { withBasePath } from "@/lib/basePath";
 import {
   CHAT_STATE_LABELS,
   CHAT_STATE_OPTIONS
@@ -29,9 +30,10 @@ const CHAT_STATE_SELECT_STYLES: Record<ChatState, string> = {
 };
 
 async function fetchMessages(personId: number) {
-  const response = await fetch(`/api/admin/conversations/${personId}/messages`, {
-    cache: "no-store"
-  });
+  const response = await fetch(
+    withBasePath(`/api/admin/conversations/${personId}/messages`),
+    { cache: "no-store" }
+  );
 
   if (!response.ok) {
     throw new Error("Nao foi possivel carregar as mensagens.");
@@ -41,9 +43,10 @@ async function fetchMessages(personId: number) {
 }
 
 async function fetchProfessional(personId: number) {
-  const response = await fetch(`/api/admin/person/${personId}/professional`, {
-    cache: "no-store"
-  });
+  const response = await fetch(
+    withBasePath(`/api/admin/person/${personId}/professional`),
+    { cache: "no-store" }
+  );
 
   if (!response.ok) {
     throw new Error("Nao foi possivel carregar o profissional.");
@@ -57,7 +60,7 @@ async function sendMessage(payload: {
   phone_number: string;
   content: string;
 }) {
-  const response = await fetch("/api/admin/send-message", {
+  const response = await fetch(withBasePath("/api/admin/send-message"), {
     method: "POST",
     headers: {
       "content-type": "application/json"
@@ -78,11 +81,14 @@ type StateUpdate =
   | { chat_state: ChatState | null };
 
 async function updateConversationState(personId: number, update: StateUpdate) {
-  const response = await fetch(`/api/admin/conversations/${personId}/state`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(update)
-  });
+  const response = await fetch(
+    withBasePath(`/api/admin/conversations/${personId}/state`),
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(update)
+    }
+  );
   const body = await response.json();
 
   if (!response.ok) {

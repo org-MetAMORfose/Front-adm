@@ -5,10 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ChatWindow } from "@/components/ChatWindow";
 import { ConversationList } from "@/components/ConversationList";
+import { withBasePath } from "@/lib/basePath";
 import type { Conversation } from "@/types";
 
 async function fetchConversations() {
-  const response = await fetch("/api/admin/conversations", {
+  const response = await fetch(withBasePath("/api/admin/conversations"), {
     cache: "no-store"
   });
 

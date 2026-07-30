@@ -52,7 +52,7 @@ Use os valores reais apenas no `.env` local.
 npm run dev
 ```
 
-Acesse `http://localhost:3000`.
+Acesse `http://localhost:3000/admin`.
 
 ## Build
 
@@ -69,7 +69,26 @@ docker build -t metaamorfose-admin-panel .
 docker run -d --rm -p 3000:3000 --env-file .env metaamorfose-admin-panel
 ```
 
-O painel ficará disponível em `http://localhost:3000`.
+O painel ficará disponível em `http://localhost:3000/admin`.
+
+Em produção, o Nginx deve preservar `/admin` ao encaminhar a requisição:
+
+```nginx
+location = /admin {
+    return 301 /admin/;
+}
+
+location /admin/ {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+O `proxy_pass` não deve terminar com `/`, pois isso removeria o prefixo
+`/admin` antes de a requisição chegar ao Next.js.
 
 ## Testes
 

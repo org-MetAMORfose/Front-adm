@@ -3,6 +3,7 @@
 import { CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 
+import { withBasePath } from "@/lib/basePath";
 import type { Professional } from "@/types";
 
 type Props = {
@@ -47,7 +48,9 @@ export function ProfessionalCard({ professional, isLoading }: Props) {
 
     try {
       const response = await fetch(
-        `/api/admin/professionals/${professional.id}/approve`,
+        withBasePath(
+          `/api/admin/professionals/${professional.id}/approve`
+        ),
         {
           method: "POST"
         }

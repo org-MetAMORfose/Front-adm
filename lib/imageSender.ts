@@ -1,3 +1,5 @@
+import { withBasePath } from "@/lib/basePath";
+
 export type ImageMessageDraft = {
   personId: number;
   phoneNumber: string;
@@ -17,7 +19,7 @@ export async function sendImageMessage(draft: ImageMessageDraft) {
 
   formData.append("file", draft.file, draft.file.name);
 
-  const response = await fetch("/api/admin/send-image", {
+  const response = await fetch(withBasePath("/api/admin/send-image"), {
     method: "POST",
     body: formData
   });
