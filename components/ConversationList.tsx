@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, MessageSquareText } from "lucide-react";
 
-import type { Conversation } from "@/types";
+import {
+  CHAT_STATE_LABELS,
+  CHAT_STATE_OPTIONS
+} from "@/lib/chatState";
+import type { ChatState, Conversation } from "@/types";
 
 type Props = {
   conversations: Conversation[];
@@ -42,30 +46,23 @@ function lastMessagePreview(conversation: Conversation) {
   return "Sem mensagens";
 }
 
-const CHAT_STATE_FILTERS = [
-  { label: "Todos", value: "ALL" },
+type ConversationFilter = "ALL" | "MANUAL" | ChatState;
+
+const CHAT_STATE_FILTERS: Array<{
+  label: string;
+  value: ConversationFilter;
+}> = [
+  { label: "Todas as conversas", value: "ALL" },
   { label: "Manual", value: "MANUAL" },
-  { label: "Novo paciente", value: "NEW_PATIENT" },
-  { label: "Seleção profissional", value: "PROFESSIONAL_REGISTRATION" },
-  { label: "Reposição", value: "PAYMENT_RENEWAL" },
-  { label: "Dúvidas", value: "QUESTION" },
-  { label: "Feedback", value: "FEEDBACK" }
-] as const;
+  ...CHAT_STATE_OPTIONS
+];
 
-const CHAT_STATE_LABELS: Record<string, string> = {
-  FEEDBACK: "Feedback",
-  QUESTION: "Dúvida",
-  PROFESSIONAL_SUPPORT: "Suporte profissional",
-  NEW_PATIENT: "Novo paciente",
-  PAYMENT_RENEWAL: "Reposição",
-  PROFESSIONAL_REGISTRATION: "Cadastro profissional"
-};
-
-const CHAT_STATE_BADGE_STYLES: Record<string, string> = {
+const CHAT_STATE_BADGE_STYLES: Record<ChatState, string> = {
   FEEDBACK: "bg-emerald-100 text-emerald-800 border border-emerald-200",
   QUESTION: "bg-rose-100 text-rose-800 border border-rose-200",
   PROFESSIONAL_SUPPORT: "bg-slate-100 text-slate-800 border border-slate-200",
   NEW_PATIENT: "bg-sky-100 text-sky-800 border border-sky-200",
+  RETURNING_PATIENT: "bg-teal-100 text-teal-800 border border-teal-200",
   PAYMENT_RENEWAL: "bg-amber-100 text-amber-800 border border-amber-200",
   PROFESSIONAL_REGISTRATION: "bg-violet-100 text-violet-800 border border-violet-200"
 };
@@ -77,9 +74,13 @@ function normalizeChatState(chatState: string | null) {
 function getChatStateBadge(chatState: string | null) {
   const normalized = normalizeChatState(chatState);
   return {
-    label: CHAT_STATE_LABELS[normalized] ?? chatState ?? "Sem etapa",
+    label:
+      CHAT_STATE_LABELS[normalized as ChatState] ??
+      chatState ??
+      "Etapa não definida",
     colorClass:
-      CHAT_STATE_BADGE_STYLES[normalized] ?? "bg-ink/5 text-ink border border-black/10"
+      CHAT_STATE_BADGE_STYLES[normalized as ChatState] ??
+      "bg-ink/5 text-ink border border-black/10"
   };
 }
 
@@ -90,7 +91,8 @@ export function ConversationList({
   error,
   onSelect
 }: Props) {
-  const [activeFilter, setActiveFilter] = useState<typeof CHAT_STATE_FILTERS[number]["value"]>("ALL");
+  const [activeFilter, setActiveFilter] =
+    useState<ConversationFilter>("ALL");
 
   const filteredConversations = useMemo(
     () =>

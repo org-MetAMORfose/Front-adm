@@ -60,6 +60,17 @@ Acesse `http://localhost:3000`.
 npm run build
 ```
 
+## Rodar com Docker
+
+Com o arquivo `.env` configurado com as variáveis necessárias, crie a imagem e inicie o container:
+
+```bash
+docker build -t metaamorfose-admin-panel .
+docker run -d --rm -p 3000:3000 --env-file .env metaamorfose-admin-panel
+```
+
+O painel ficará disponível em `http://localhost:3000`.
+
 ## Testes
 
 ```bash

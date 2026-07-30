@@ -7,6 +7,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ImagePreviewModal } from "@/components/ImagePreviewModal";
 import { MessageBubble } from "@/components/MessageBubble";
 import { ProfessionalCard } from "@/components/ProfessionalCard";
+import {
+  CHAT_STATE_LABELS,
+  CHAT_STATE_OPTIONS
+} from "@/lib/chatState";
 import { sendImageMessage } from "@/lib/imageSender";
 import type { ChatMode, ChatState, Conversation, Message, Professional } from "@/types";
 
@@ -19,6 +23,7 @@ const CHAT_STATE_SELECT_STYLES: Record<ChatState, string> = {
   QUESTION: "border-rose-200 bg-rose-100 text-rose-800",
   PROFESSIONAL_SUPPORT: "border-slate-200 bg-slate-100 text-slate-800",
   NEW_PATIENT: "border-sky-200 bg-sky-100 text-sky-800",
+  RETURNING_PATIENT: "border-teal-200 bg-teal-100 text-teal-800",
   PAYMENT_RENEWAL: "border-amber-200 bg-amber-100 text-amber-800",
   PROFESSIONAL_REGISTRATION: "border-violet-200 bg-violet-100 text-violet-800"
 };
@@ -260,7 +265,9 @@ export function ChatWindow({ conversation }: Props) {
             <p className="truncate text-sm text-ink/60">
               {conversation.phone_number} · {conversation.channel ?? "CANAL"} ·{" "}
               {conversation.chat_mode === "MANUAL" ? "Manual" : "Automático"} ·{" "}
-              {conversation.chat_state ?? "Sem etapa"}
+              {conversation.chat_state
+                ? CHAT_STATE_LABELS[conversation.chat_state]
+                : "Etapa não definida"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -395,13 +402,12 @@ export function ChatWindow({ conversation }: Props) {
             className={`min-h-12 rounded border px-3 py-2 text-sm font-semibold outline-none transition focus:ring-2 focus:ring-sage/20 disabled:cursor-not-allowed disabled:opacity-60 ${stateSelectStyle}`}
           >
             <option value="" disabled>Alterar etapa</option>
-            <option value="state:none">Sem etapa</option>
-            <option value="state:FEEDBACK">Feedback</option>
-            <option value="state:QUESTION">Dúvidas</option>
-            <option value="state:PROFESSIONAL_SUPPORT">Suporte profissional</option>
-            <option value="state:NEW_PATIENT">Novo paciente</option>
-            <option value="state:PAYMENT_RENEWAL">Reposição</option>
-            <option value="state:PROFESSIONAL_REGISTRATION">Seleção profissional</option>
+            <option value="state:none">Etapa não definida</option>
+            {CHAT_STATE_OPTIONS.map((option) => (
+              <option key={option.value} value={`state:${option.value}`}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
         {!isManual ? (
