@@ -74,9 +74,6 @@ export function ProfessionalCard({ professional, isLoading }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold">Profissional</h3>
-          <p className="text-xs text-ink/55">
-            Status atual: {professional.current_status ?? "--"}
-          </p>
         </div>
         <button
           type="button"

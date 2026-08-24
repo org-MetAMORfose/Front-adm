@@ -228,6 +228,11 @@ export function ChatWindow({ conversation }: Props) {
         file: imageFile,
         caption: content.trim() || undefined
       });
+      clearImage();
+      setContent("");
+      setStatus("Imagem enviada.");
+      await queryClient.invalidateQueries({ queryKey: ["messages", personId] });
+      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Erro inesperado.");
     }
