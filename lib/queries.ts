@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/db";
+import { getMediaType } from "@/lib/media";
 import type { Conversation, Message, Professional } from "@/types";
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -27,8 +28,7 @@ export async function getConversations(): Promise<Conversation[]> {
         person_created_at: person.created_at.toISOString(),
         last_message_id: lastMessage?.id ?? null,
         last_message_content: lastMessage?.content ?? null,
-        last_message_image_url: lastMessage?.image_url ?? null,
-        last_message_document_url: lastMessage?.document_url ?? null,
+        last_message_media_type: getMediaType(lastMessage?.media_path ?? null),
         last_message_is_from_user: lastMessage?.is_from_user ?? null,
         last_message_created_at: lastMessage?.created_at.toISOString() ?? null
       };
@@ -47,8 +47,12 @@ export async function getMessagesByPersonId(personId: number): Promise<Message[]
   });
 
   return messages.map((message) => ({
-    ...message,
-    created_at: message.created_at.toISOString()
+    id: message.id,
+    person_id: message.person_id,
+    created_at: message.created_at.toISOString(),
+    content: message.content,
+    media_type: getMediaType(message.media_path),
+    is_from_user: message.is_from_user
   }));
 }
 
@@ -56,25 +60,14 @@ export async function getProfessionalByPersonId(
   personId: number
 ): Promise<Professional | null> {
   const professional = await prisma.professional.findUnique({
-    where: { person_id: personId },
-    include: {
-      professional_status_history: {
-        orderBy: [{ created_at: "desc" }, { id: "desc" }],
-        take: 1
-      }
-    }
+    where: { person_id: personId }
   });
 
   if (!professional) return null;
 
-  const { professional_status_history: statusHistory, ...data } = professional;
-  const currentStatus = statusHistory[0];
-
   return {
-    ...data,
-    created_at: data.created_at.toISOString(),
-    current_status: currentStatus?.professional_status ?? null,
-    status_created_at: currentStatus?.created_at.toISOString() ?? null
+    ...professional,
+    created_at: professional.created_at.toISOString()
   };
 }
 

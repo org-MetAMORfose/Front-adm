@@ -19,8 +19,7 @@ runDbTests("database integration", () => {
       prisma.message_history.count(),
       prisma.patient.count(),
       prisma.professional.count(),
-      prisma.professional_patient.count(),
-      prisma.professional_status_history.count()
+      prisma.professional_patient.count()
     ]);
 
     expect(counts.every((count) => Number.isInteger(count))).toBe(true);

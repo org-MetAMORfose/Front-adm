@@ -35,11 +35,11 @@ function lastMessagePreview(conversation: Conversation) {
     return conversation.last_message_content;
   }
 
-  if (conversation.last_message_image_url) {
+  if (conversation.last_message_media_type === "image") {
     return "Imagem recebida";
   }
 
-  if (conversation.last_message_document_url) {
+  if (conversation.last_message_media_type === "document") {
     return "Documento recebido";
   }
 

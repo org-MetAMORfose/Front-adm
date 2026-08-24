@@ -12,18 +12,21 @@ model message_history {
   person_id    Int
   created_at   DateTime @db.Timestamp(6)
   content      String?
-  image_url    String?  @db.VarChar
-  document_url String?  @db.VarChar
+  media_path   String?  @db.VarChar
   is_from_user Boolean
   person       person   @relation(fields: [person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model patient {
-  id                   Int                    @id @default(autoincrement())
-  person_id            Int                    @unique
-  created_at           DateTime               @db.Timestamp(6)
-  person               person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  professional_patient professional_patient[]
+  id                     Int                    @id @default(autoincrement())
+  person_id              Int
+  created_at             DateTime               @db.Timestamp(6)
+  area                   String?                @db.VarChar
+  psychotherapy_approach String?                @db.VarChar
+  professional_profile   String?                @db.VarChar
+  price_range            String?                @db.VarChar
+  person                 person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  professional_patient   professional_patient[]
 }
 
 model person {
@@ -36,26 +39,25 @@ model person {
   chat_state      chatstate?
   chat_mode       chatmode
   message_history message_history[]
-  patient         patient?
+  patient         patient[]
   professional    professional?
 
   @@unique([phone_number, channel], map: "uq_person_phone_channel")
 }
 
 model professional {
-  id                          Int                           @id @default(autoincrement())
-  person_id                   Int                           @unique
-  area                        String                        @db.VarChar
-  professional_register       String                        @db.VarChar
-  register_type               String                        @db.VarChar
-  approach                    String?
-  background                  String?
-  video_platform              String?                       @db.VarChar
-  email                       String?                       @db.VarChar
-  created_at                  DateTime                      @db.Timestamp(6)
-  person                      person                        @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  professional_patient        professional_patient[]
-  professional_status_history professional_status_history[]
+  id                    Int                    @id @default(autoincrement())
+  person_id             Int                    @unique
+  area                  String                 @db.VarChar
+  professional_register String                 @db.VarChar
+  register_type         String                 @db.VarChar
+  approach              String?
+  background            String?
+  video_platform        String?                @db.VarChar
+  email                 String?                @db.VarChar
+  created_at            DateTime               @db.Timestamp(6)
+  person                person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  professional_patient  professional_patient[]
 
   @@unique([register_type, professional_register], map: "uq_professional_register")
 }
@@ -70,14 +72,6 @@ model professional_patient {
   professional    professional @relation(fields: [professional_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([professional_id, patient_id], map: "uq_professional_patient")
-}
-
-model professional_status_history {
-  id                  Int                @id @default(autoincrement())
-  professional_id     Int
-  professional_status professionalstatus
-  created_at          DateTime           @db.Timestamp(6)
-  professional        professional       @relation(fields: [professional_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 enum channel {
@@ -98,14 +92,4 @@ enum chatstate {
   RETURNING_PATIENT
   PAYMENT_RENEWAL
   PROFESSIONAL_REGISTRATION
-}
-
-enum professionalstatus {
-  REGISTER_PENDING
-  UNDER_REVIEW
-  APPROVED
-  REJECTED
-  PAYMENT_PENDING
-  ACTIVE
-  INACTIVE
 }

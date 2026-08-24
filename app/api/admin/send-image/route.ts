@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { getMediaType, isValidMediaPath } from "@/lib/media";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ async function readResponseBody(response: Response) {
   }
 }
 
-function extractImageUrl(body: unknown): string | null {
+function extractMediaPath(body: unknown): string | null {
   if (!body) {
     return null;
   }
@@ -30,25 +31,14 @@ function extractImageUrl(body: unknown): string | null {
   if (typeof body === "object") {
     const candidate = body as Record<string, unknown>;
 
-    if (typeof candidate.image_url === "string" && candidate.image_url.trim()) {
-      return candidate.image_url.trim();
-    }
-
-    if (typeof candidate.url === "string" && candidate.url.trim()) {
-      return candidate.url.trim();
-    }
-
-    if (typeof candidate.file_url === "string" && candidate.file_url.trim()) {
-      return candidate.file_url.trim();
+    if (typeof candidate.media === "string" && candidate.media.trim()) {
+      return candidate.media.trim();
     }
 
     if (candidate.data && typeof candidate.data === "object") {
       const nested = candidate.data as Record<string, unknown>;
-      if (typeof nested.image_url === "string" && nested.image_url.trim()) {
-        return nested.image_url.trim();
-      }
-      if (typeof nested.url === "string" && nested.url.trim()) {
-        return nested.url.trim();
+      if (typeof nested.media === "string" && nested.media.trim()) {
+        return nested.media.trim();
       }
     }
   }
@@ -139,19 +129,25 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          uploadBody && typeof uploadBody === "object" && "error" in uploadBody
-            ? (uploadBody as { error?: string }).error
+          uploadBody && typeof uploadBody === "object"
+            ? ((uploadBody as { detail?: string; error?: string }).detail ??
+              (uploadBody as { detail?: string; error?: string }).error ??
+              "Failed to upload media.")
             : "Failed to upload media."
       },
       { status: uploadResponse.status }
     );
   }
 
-  const imageUrl = extractImageUrl(uploadBody);
+  const mediaPath = extractMediaPath(uploadBody);
 
-  if (!imageUrl) {
+  if (
+    !mediaPath ||
+    !isValidMediaPath(mediaPath) ||
+    getMediaType(mediaPath) !== "image"
+  ) {
     return NextResponse.json(
-      { error: "Upload succeeded but no image URL was returned." },
+      { error: "Upload succeeded but no valid media path was returned." },
       { status: 500 }
     );
   }
@@ -159,8 +155,7 @@ export async function POST(request: Request) {
   const sendBody = {
     phone_number: phoneNumber.trim(),
     content: typeof caption === "string" ? caption.trim() : "",
-    image_url: imageUrl,
-    document_url: null
+    media: mediaPath
   };
 
   const sendResponse = await fetch(sendMessageUrl, {

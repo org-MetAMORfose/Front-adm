@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { GET as getConversations } from "@/app/api/admin/conversations/route";
 import { GET as getMessages } from "@/app/api/admin/conversations/[personId]/messages/route";
+import { GET as getProfessional } from "@/app/api/admin/person/[personId]/professional/route";
 import { closeDatabase } from "@/lib/db";
 import { getAnyPersonId } from "@/lib/queries";
 
@@ -37,5 +38,25 @@ runApiTests("admin API integration", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toHaveProperty("messages");
+  });
+
+  it("GET professional for an existing person returns 200", async (context) => {
+    const personId = await getAnyPersonId();
+
+    if (!personId) {
+      context.skip();
+    }
+
+    const response = await getProfessional(
+      new Request(`http://localhost/api/admin/person/${personId}/professional`),
+      {
+        params: Promise.resolve({
+          personId: String(personId)
+        })
+      }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toHaveProperty("professional");
   });
 });

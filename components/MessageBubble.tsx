@@ -2,6 +2,7 @@
 
 import { FileText } from "lucide-react";
 
+import { withBasePath } from "@/lib/basePath";
 import type { Message } from "@/types";
 
 type Props = {
@@ -20,6 +21,7 @@ function formatDate(value: string) {
 
 export function MessageBubble({ message, onImageClick }: Props) {
   const fromUser = message.is_from_user;
+  const mediaUrl = withBasePath(`/api/admin/messages/${message.id}/media`);
 
   return (
     <div className={`flex ${fromUser ? "justify-start" : "justify-end"}`}>
@@ -36,24 +38,24 @@ export function MessageBubble({ message, onImageClick }: Props) {
           </p>
         ) : null}
 
-        {message.image_url ? (
+        {message.media_type === "image" ? (
           <button
             type="button"
             className="mt-2 block overflow-hidden rounded border border-black/10"
-            onClick={() => onImageClick(message.image_url as string)}
+            onClick={() => onImageClick(mediaUrl)}
             aria-label="Ampliar imagem"
           >
             <img
-              src={message.image_url}
+              src={mediaUrl}
               alt="Imagem recebida"
               className="max-h-64 w-full object-cover"
             />
           </button>
         ) : null}
 
-        {message.document_url ? (
+        {message.media_type === "document" ? (
           <a
-            href={message.document_url}
+            href={mediaUrl}
             target="_blank"
             rel="noreferrer"
             className={`mt-2 inline-flex items-center gap-2 rounded border px-2 py-1 text-sm underline-offset-2 hover:underline ${

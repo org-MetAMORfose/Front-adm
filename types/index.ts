@@ -2,6 +2,8 @@ export type Channel = "TELEGRAM" | "WHATSAPP" | null;
 
 export type ChatMode = "AUTOMATIC" | "MANUAL";
 
+export type MediaType = "image" | "document";
+
 export type ChatState =
   | "FEEDBACK"
   | "QUESTION"
@@ -10,15 +12,6 @@ export type ChatState =
   | "RETURNING_PATIENT"
   | "PAYMENT_RENEWAL"
   | "PROFESSIONAL_REGISTRATION";
-
-export type ProfessionalStatus =
-  | "REGISTER_PENDING"
-  | "UNDER_REVIEW"
-  | "APPROVED"
-  | "REJECTED"
-  | "PAYMENT_PENDING"
-  | "ACTIVE"
-  | "INACTIVE";
 
 export type Conversation = {
   person_id: number;
@@ -30,8 +23,7 @@ export type Conversation = {
   person_created_at: string;
   last_message_id: number | null;
   last_message_content: string | null;
-  last_message_image_url: string | null;
-  last_message_document_url: string | null;
+  last_message_media_type: MediaType | null;
   last_message_is_from_user: boolean | null;
   last_message_created_at: string | null;
 };
@@ -41,8 +33,7 @@ export type Message = {
   person_id: number;
   created_at: string;
   content: string | null;
-  image_url: string | null;
-  document_url: string | null;
+  media_type: MediaType | null;
   is_from_user: boolean;
 };
 
@@ -57,8 +48,6 @@ export type Professional = {
   video_platform: string | null;
   email: string | null;
   created_at: string;
-  current_status: ProfessionalStatus | null;
-  status_created_at: string | null;
 };
 
 export type SendMessagePayload = {
