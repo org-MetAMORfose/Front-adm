@@ -105,6 +105,8 @@ export function ChatWindow({ conversation }: Props) {
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isSendingImage, setIsSendingImage] = useState(false);
+  const imageSendInFlightRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const personId = conversation?.person_id;
 
@@ -217,9 +219,12 @@ export function ChatWindow({ conversation }: Props) {
   }
 
   async function handleImageSend() {
-    if (!conversation || !imageFile) {
+    if (!conversation || !imageFile || imageSendInFlightRef.current) {
       return;
     }
+
+    imageSendInFlightRef.current = true;
+    setIsSendingImage(true);
 
     try {
       await sendImageMessage({
@@ -235,6 +240,9 @@ export function ChatWindow({ conversation }: Props) {
       await queryClient.invalidateQueries({ queryKey: ["conversations"] });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Erro inesperado.");
+    } finally {
+      imageSendInFlightRef.current = false;
+      setIsSendingImage(false);
     }
   }
 
@@ -361,15 +369,16 @@ export function ChatWindow({ conversation }: Props) {
             <button
               type="button"
               onClick={handleImageSend}
-              disabled={!isManual}
-              className="rounded bg-sage px-3 py-2 text-sm font-semibold text-white transition hover:bg-sage/90"
+              disabled={!isManual || isSendingImage}
+              className="rounded bg-sage px-3 py-2 text-sm font-semibold text-white transition hover:bg-sage/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Enviar imagem
+              {isSendingImage ? "Enviando..." : "Enviar imagem"}
             </button>
             <button
               type="button"
               onClick={clearImage}
-              className="rounded border border-black/10 p-2 text-ink/60 transition hover:bg-white"
+              disabled={isSendingImage}
+              className="rounded border border-black/10 p-2 text-ink/60 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
               aria-label="Remover imagem"
             >
               <X className="h-4 w-4" aria-hidden />
@@ -378,7 +387,7 @@ export function ChatWindow({ conversation }: Props) {
         ) : null}
 
         <div className="flex items-end gap-2">
-          <label className={`inline-flex items-center justify-center rounded border border-black/10 p-3 text-ink/70 transition ${isManual ? "cursor-pointer hover:bg-mist" : "cursor-not-allowed opacity-50"}`}>
+          <label className={`inline-flex items-center justify-center rounded border border-black/10 p-3 text-ink/70 transition ${isManual && !isSendingImage ? "cursor-pointer hover:bg-mist" : "cursor-not-allowed opacity-50"}`}>
             <ImagePlus className="h-5 w-5" aria-hidden />
             <span className="sr-only">Anexar imagem</span>
             <input
@@ -386,7 +395,7 @@ export function ChatWindow({ conversation }: Props) {
               accept="image/*"
               className="hidden"
               onChange={handleFileChange}
-              disabled={!isManual}
+              disabled={!isManual || isSendingImage}
             />
           </label>
           <textarea

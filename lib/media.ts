@@ -2,6 +2,7 @@ import type { MediaType } from "@/types";
 
 const MEDIA_PREFIXES: Record<MediaType, string> = {
   image: "media/image/",
+  video: "media/video/",
   document: "media/document/"
 };
 
@@ -12,6 +13,10 @@ export function getMediaType(mediaPath: string | null): MediaType | null {
 
   if (mediaPath.startsWith(MEDIA_PREFIXES.image)) {
     return "image";
+  }
+
+  if (mediaPath.startsWith(MEDIA_PREFIXES.video)) {
+    return "video";
   }
 
   if (mediaPath.startsWith(MEDIA_PREFIXES.document)) {

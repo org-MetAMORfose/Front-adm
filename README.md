@@ -1,6 +1,6 @@
 # MetaAmorfose Admin Panel
 
-Painel fullstack em Next.js para visualizar conversas do chatbot, enviar mensagens manuais, consultar midias/documentos recebidos e solicitar aprovacao de profissionais por endpoint HTTP.
+Painel fullstack em Next.js para visualizar conversas do chatbot, enviar mensagens manuais, consultar imagens, videos e documentos recebidos e solicitar aprovacao de profissionais por endpoint HTTP.
 
 ## Arquitetura
 
@@ -60,8 +60,9 @@ Use os valores reais apenas no `.env` local.
 ## Fluxo de midia
 
 - O banco armazena somente a chave privada em `message_history.media_path`.
-- Imagens e documentos sao solicitados pela rota interna do painel usando o ID
+- Imagens, videos e documentos sao solicitados pela rota interna do painel usando o ID
   da mensagem; o backend busca o objeto no S3 e transmite o conteudo ao browser.
+- Videos podem ser reproduzidos na conversa ou baixados pela mesma rota privada.
 - Para enviar uma imagem, o painel envia o arquivo para `POST /upload-media` e
   encaminha o campo `media` retornado para `POST /send`.
 
