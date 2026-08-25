@@ -2,7 +2,7 @@ export type Channel = "TELEGRAM" | "WHATSAPP" | null;
 
 export type ChatMode = "AUTOMATIC" | "MANUAL";
 
-export type MediaType = "image" | "document";
+export type MediaType = "image" | "video" | "document";
 
 export type ChatState =
   | "FEEDBACK"
