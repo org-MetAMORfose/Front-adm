@@ -150,16 +150,16 @@ para execucao local em ambientes que tenham acesso ao banco real e fazem
 somente leitura.
 
 O CD roda somente depois de um CI bem-sucedido causado por push na `main`. Ele
-conecta na VPS por SSH, atualiza o clone localizado em
-`/home/ubuntu/front-adm` para o SHA exato testado e executa o deploy com Docker
-Compose. Antes do build, o workflow recria o `.env` da VPS com os GitHub Secrets
-e permissao `600`. Ao final, `/admin/api/health` confirma a conexao com o banco
-real.
+faz checkout do SHA exato testado no GitHub, envia um arquivo compactado por SCP
+e extrai o codigo em `$HOME/front-adm/releases/<SHA>` na VPS. O deploy nao
+depende do diretorio inicial do SSH nem exige um clone do repositorio no
+servidor. Antes do build, o workflow recria o `.env` com os GitHub Secrets e
+permissao `600`. Ao final, `/admin/api/health` confirma a conexao com o banco
+real e o link `$HOME/front-adm/current` passa a apontar para a release ativa.
 
-Configuracao unica esperada na VPS:
+Configuracao esperada na VPS:
 
-- clone do repositorio em `/home/ubuntu/front-adm`;
-- deploy key somente leitura para `git fetch`, caso o repositorio seja privado;
+- usuario SSH com permissao para criar `$HOME/front-adm` e executar Docker;
 - Nginx encaminhando `/admin` para `127.0.0.1:3000`.
 
 Secrets usadas pelo workflow de CD:

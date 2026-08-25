@@ -21,10 +21,29 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
 
     steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Create deployment archive
+        run: git archive --format=tar.gz --output=front-adm-deploy.tar.gz HEAD
+
+      - name: Copy tested source to Lightsail
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          source: front-adm-deploy.tar.gz
+          target: /tmp/front-adm-${{ github.run_id }}
+          rm: true
+
       - name: Deploy tested commit over SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEPLOY_ARCHIVE_PATH: /tmp/front-adm-${{ github.run_id }}/front-adm-deploy.tar.gz
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SEND_MESSAGE_URL: ${{ secrets.SEND_MESSAGE_URL }}
           UPLOAD_MEDIA_URL: ${{ secrets.UPLOAD_MEDIA_URL }}
@@ -38,20 +57,25 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          envs: DEPLOY_SHA,DATABASE_URL,SEND_MESSAGE_URL,UPLOAD_MEDIA_URL,APPROVE_PROFESSIONAL_URL,S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,CHATBOT_DOCKER_NETWORK
+          envs: DEPLOY_SHA,DEPLOY_ARCHIVE_PATH,DATABASE_URL,SEND_MESSAGE_URL,UPLOAD_MEDIA_URL,APPROVE_PROFESSIONAL_URL,S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,CHATBOT_DOCKER_NETWORK
           script_stop: true
           script: |
             set -eu
 
-            cd /home/ubuntu/front-adm
+            : "${DEPLOY_SHA:?DEPLOY_SHA is required}"
+            : "${DEPLOY_ARCHIVE_PATH:?DEPLOY_ARCHIVE_PATH is required}"
+
+            FRONT_ADM_ROOT="$HOME/front-adm"
+            RELEASE_DIR="$FRONT_ADM_ROOT/releases/$DEPLOY_SHA"
+
+            mkdir -p "$RELEASE_DIR"
+            tar -xzf "$DEPLOY_ARCHIVE_PATH" -C "$RELEASE_DIR"
+            rm -f "$DEPLOY_ARCHIVE_PATH"
+
+            cd "$RELEASE_DIR"
 
             test -f Dockerfile
             test -f docker-compose.yml
-            test -d .git
-
-            git fetch origin main:refs/remotes/origin/main
-            git merge-base --is-ancestor "$DEPLOY_SHA" origin/main
-            git checkout --force "$DEPLOY_SHA"
 
             : "${DATABASE_URL:?GitHub Secret DATABASE_URL is required}"
             : "${SEND_MESSAGE_URL:?GitHub Secret SEND_MESSAGE_URL is required}"
@@ -79,14 +103,15 @@ jobs:
 
             export FRONT_ADM_IMAGE_TAG="$DEPLOY_SHA"
 
-            docker compose config --quiet
-            docker compose build
-            docker compose up -d --no-build --remove-orphans
+            docker compose --project-name front-adm config --quiet
+            docker compose --project-name front-adm build
+            docker compose --project-name front-adm up -d --no-build --remove-orphans
 
             for attempt in $(seq 1 30); do
               if curl -fsS http://127.0.0.1:3000/admin/api/health; then
                 echo "Front admin deployed successfully"
-                docker compose ps
+                ln -sfn "$RELEASE_DIR" "$FRONT_ADM_ROOT/current"
+                docker compose --project-name front-adm ps
                 exit 0
               fi
               echo "Waiting for health check (attempt $attempt/30)"
@@ -94,6 +119,6 @@ jobs:
             done
 
             echo "Front admin health check failed"
-            docker compose ps
-            docker compose logs --tail=200 front-adm
+            docker compose --project-name front-adm ps
+            docker compose --project-name front-adm logs --tail=200 front-adm
             exit 1
