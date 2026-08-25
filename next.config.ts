@@ -4,6 +4,7 @@ import { APP_BASE_PATH } from "./lib/basePath";
 
 const nextConfig: NextConfig = {
   basePath: APP_BASE_PATH,
+  output: "standalone",
   images: {
     remotePatterns: [
       {

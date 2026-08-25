@@ -1,10 +1,15 @@
 node_modules
 .next
 .git
+.github
 .env
 .env.*
 !.env.example
 coverage
+tests
+README.md
+LICENSE
+vitest.config.ts
 npm-debug.log*
 Dockerfile
 docker-compose*.yml

@@ -1,0 +1,99 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: front-adm-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Lightsail
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
+
+    steps:
+      - name: Deploy tested commit over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SEND_MESSAGE_URL: ${{ secrets.SEND_MESSAGE_URL }}
+          UPLOAD_MEDIA_URL: ${{ secrets.UPLOAD_MEDIA_URL }}
+          APPROVE_PROFESSIONAL_URL: ${{ secrets.APPROVE_PROFESSIONAL_URL }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          CHATBOT_DOCKER_NETWORK: ${{ secrets.CHATBOT_DOCKER_NETWORK }}
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          envs: DEPLOY_SHA,DATABASE_URL,SEND_MESSAGE_URL,UPLOAD_MEDIA_URL,APPROVE_PROFESSIONAL_URL,S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,CHATBOT_DOCKER_NETWORK
+          script_stop: true
+          script: |
+            set -eu
+
+            cd /home/ubuntu/front-adm
+
+            test -f Dockerfile
+            test -f docker-compose.yml
+            test -d .git
+
+            git fetch origin main:refs/remotes/origin/main
+            git merge-base --is-ancestor "$DEPLOY_SHA" origin/main
+            git checkout --force "$DEPLOY_SHA"
+
+            : "${DATABASE_URL:?GitHub Secret DATABASE_URL is required}"
+            : "${SEND_MESSAGE_URL:?GitHub Secret SEND_MESSAGE_URL is required}"
+            : "${UPLOAD_MEDIA_URL:?GitHub Secret UPLOAD_MEDIA_URL is required}"
+            : "${S3_BUCKET_NAME:?GitHub Secret S3_BUCKET_NAME is required}"
+            : "${AWS_ACCESS_KEY_ID:?GitHub Secret AWS_ACCESS_KEY_ID is required}"
+            : "${AWS_SECRET_ACCESS_KEY:?GitHub Secret AWS_SECRET_ACCESS_KEY is required}"
+            : "${AWS_REGION:?GitHub Secret AWS_REGION is required}"
+            : "${CHATBOT_DOCKER_NETWORK:?GitHub Secret CHATBOT_DOCKER_NETWORK is required}"
+
+            umask 077
+            {
+              printf '%s\n' "DATABASE_URL=$DATABASE_URL"
+              printf '%s\n' "SEND_MESSAGE_URL=$SEND_MESSAGE_URL"
+              printf '%s\n' "UPLOAD_MEDIA_URL=$UPLOAD_MEDIA_URL"
+              printf '%s\n' "APPROVE_PROFESSIONAL_URL=${APPROVE_PROFESSIONAL_URL:-}"
+              printf '%s\n' "S3_BUCKET_NAME=$S3_BUCKET_NAME"
+              printf '%s\n' "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+              printf '%s\n' "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+              printf '%s\n' "AWS_REGION=$AWS_REGION"
+              printf '%s\n' "CHATBOT_DOCKER_NETWORK=$CHATBOT_DOCKER_NETWORK"
+            } > .env.deploy
+            mv .env.deploy .env
+            chmod 600 .env
+
+            export FRONT_ADM_IMAGE_TAG="$DEPLOY_SHA"
+
+            docker compose config --quiet
+            docker compose build
+            docker compose up -d --no-build --remove-orphans
+
+            for attempt in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:3000/admin/api/health; then
+                echo "Front admin deployed successfully"
+                docker compose ps
+                exit 0
+              fi
+              echo "Waiting for health check (attempt $attempt/30)"
+              sleep 2
+            done
+
+            echo "Front admin health check failed"
+            docker compose ps
+            docker compose logs --tail=200 front-adm
+            exit 1

@@ -28,7 +28,10 @@ export default function HomePage() {
     refetchInterval: 5000
   });
 
-  const conversations = data?.conversations ?? [];
+  const conversations = useMemo(
+    () => data?.conversations ?? [],
+    [data?.conversations]
+  );
   const selectedConversation = useMemo(
     () =>
       conversations.find(

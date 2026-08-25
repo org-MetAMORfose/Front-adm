@@ -13,7 +13,8 @@ RUN apt-get update \
 FROM base AS dependencies
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
 
 FROM base AS builder
 
@@ -24,10 +25,8 @@ COPY . .
 # This placeholder is used only while compiling; provide the real value at runtime.
 ARG DATABASE_URL="postgresql://user:password@localhost:5432/metaamorfose"
 ENV DATABASE_URL=$DATABASE_URL
-RUN npx prisma generate && npm run build
-
-# Keep only the runtime dependencies (including the generated Prisma client).
-RUN npm prune --omit=dev
+RUN --mount=type=cache,target=/app/.next/cache \
+    npx prisma generate && npm run build
 
 FROM base AS runner
 
@@ -40,14 +39,11 @@ RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/next.config.ts ./next.config.ts
-COPY --from=builder --chown=nextjs:nodejs /app/lib/basePath.ts ./lib/basePath.ts
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start"]
+CMD ["node", "server.js"]
