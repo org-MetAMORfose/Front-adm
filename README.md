@@ -47,6 +47,7 @@ S3_BUCKET_NAME=""
 AWS_ACCESS_KEY_ID=""
 AWS_SECRET_ACCESS_KEY=""
 AWS_REGION="us-east-1"
+CHATBOT_DOCKER_NETWORK="whatsapp-chatbot_chatbot_net"
 ```
 
 `APPROVE_PROFESSIONAL_URL` pode ser uma URL direta ou conter `{professionalId}` para substituicao no envio.
@@ -80,14 +81,26 @@ npm run build
 
 ## Rodar com Docker
 
-Com o arquivo `.env` configurado com as variáveis necessárias, crie a imagem e inicie o container:
+O Compose deste repositorio gerencia somente o front e entra na rede Docker ja
+criada pelo Compose do chatbot. Confirme o nome real da rede na VPS:
 
 ```bash
-docker build -t metaamorfose-admin-panel .
-docker run -d --rm -p 3000:3000 --env-file .env metaamorfose-admin-panel
+docker network ls
+```
+
+Defina esse nome em `CHATBOT_DOCKER_NETWORK` no `.env` e inicie o painel:
+
+```bash
+docker compose up -d --build
 ```
 
 O painel ficará disponível em `http://localhost:3000/admin`.
+
+O health check consulta o PostgreSQL e fica disponivel em:
+
+```text
+http://localhost:3000/admin/api/health
+```
 
 Em produção, o Nginx deve preservar `/admin` ao encaminhar a requisição:
 
@@ -111,10 +124,58 @@ O `proxy_pass` não deve terminar com `/`, pois isso removeria o prefixo
 ## Testes
 
 ```bash
+npm run lint
+npm run typecheck
 npm test
 ```
 
 Os testes de banco usam `DATABASE_URL` e executam apenas `SELECT`.
+
+## Prisma e migrations
+
+O chatbot e a fonte da verdade do schema do PostgreSQL. Este repositorio contem
+somente uma projecao Prisma das tabelas lidas pelo painel.
+
+O CI e o Docker executam apenas `prisma generate`, que gera o client local. Nao
+execute neste repositorio `prisma migrate`, `prisma migrate deploy` ou
+`prisma db push`.
+
+## CI/CD
+
+O workflow de CI executa lint, verificacao de tipos, testes e um smoke test da
+imagem standalone. O smoke test acessa a pagina `/admin` e nao depende do banco
+do chatbot. O CI usa `npm run test:unit`; os testes `*.integration.test.ts`
+nao sao carregados nem executados no GitHub Actions. Eles continuam reservados
+para execucao local em ambientes que tenham acesso ao banco real e fazem
+somente leitura.
+
+O CD roda somente depois de um CI bem-sucedido causado por push na `main`. Ele
+conecta na VPS por SSH, atualiza o clone localizado em
+`/home/ubuntu/front-adm` para o SHA exato testado e executa o deploy com Docker
+Compose. Antes do build, o workflow recria o `.env` da VPS com os GitHub Secrets
+e permissao `600`. Ao final, `/admin/api/health` confirma a conexao com o banco
+real.
+
+Configuracao unica esperada na VPS:
+
+- clone do repositorio em `/home/ubuntu/front-adm`;
+- deploy key somente leitura para `git fetch`, caso o repositorio seja privado;
+- Nginx encaminhando `/admin` para `127.0.0.1:3000`.
+
+Secrets usadas pelo workflow de CD:
+
+- `LIGHTSAIL_HOST`;
+- `LIGHTSAIL_USER`;
+- `LIGHTSAIL_SSH_KEY`;
+- `DATABASE_URL`;
+- `SEND_MESSAGE_URL`;
+- `UPLOAD_MEDIA_URL`;
+- `APPROVE_PROFESSIONAL_URL` (opcional enquanto a aprovacao estiver desativada);
+- `S3_BUCKET_NAME`;
+- `AWS_ACCESS_KEY_ID`;
+- `AWS_SECRET_ACCESS_KEY`;
+- `AWS_REGION`;
+- `CHATBOT_DOCKER_NETWORK`.
 
 ## Teste real de envio
 

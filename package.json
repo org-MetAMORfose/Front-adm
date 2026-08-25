@@ -6,8 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude 'tests/*.integration.test.ts'",
     "test:watch": "vitest",
     "test:send-message": "RUN_SEND_MESSAGE_INTEGRATION_TEST=true vitest run tests/send-message.integration.test.ts"
   },
@@ -22,6 +24,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/node": "^22.9.0",
     "@types/react": "^19.0.1",
