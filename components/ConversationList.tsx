@@ -115,8 +115,8 @@ export function ConversationList({
   );
 
   return (
-    <aside className="border-b border-black/10 bg-white lg:border-b-0 lg:border-r">
-      <div className="flex items-center justify-between border-b border-black/10 px-4 py-3">
+    <aside className="border-b border-black/10 bg-white lg:flex lg:max-h-[calc(100vh-73px)] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:border-b-0 lg:border-r">
+      <div className="flex shrink-0 items-center justify-between border-b border-black/10 px-4 py-3">
         <div>
           <h2 className="text-base font-semibold">Conversas</h2>
           <p className="text-xs text-ink/55">
@@ -126,25 +126,27 @@ export function ConversationList({
         <MessageSquareText className="h-5 w-5 text-sage" aria-hidden />
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-black/10 px-4 py-3">
-        {CHAT_STATE_FILTERS.map((filter) => {
-          const isActive = activeFilter === filter.value;
-
-          return (
-            <button
-              key={filter.value}
-              type="button"
-              onClick={() => setActiveFilter(filter.value)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                isActive
-                  ? "border-ink bg-ink text-white shadow-sm"
-                  : "border-black/10 bg-white text-ink/70 hover:bg-mist"
-              }`}
-            >
+      <div className="shrink-0 border-b border-black/10 px-4 py-3">
+        <label
+          htmlFor="conversation-filter"
+          className="mb-1 block text-xs font-medium text-ink/60"
+        >
+          Filtrar conversas
+        </label>
+        <select
+          id="conversation-filter"
+          value={activeFilter}
+          onChange={(event) =>
+            setActiveFilter(event.target.value as ConversationFilter)
+          }
+          className="w-full rounded border border-black/10 bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/20"
+        >
+          {CHAT_STATE_FILTERS.map((filter) => (
+            <option key={filter.value} value={filter.value}>
               {filter.label}
-            </button>
-          );
-        })}
+            </option>
+          ))}
+        </select>
       </div>
 
       {error ? (
@@ -153,7 +155,7 @@ export function ConversationList({
         </div>
       ) : null}
 
-      <div className="max-h-[36vh] overflow-y-auto lg:max-h-[calc(100vh-126px)]">
+      <div className="max-h-[36vh] overflow-y-auto lg:min-h-0 lg:flex-1 lg:max-h-none">
         {isLoading ? (
           <div className="p-4 text-sm text-ink/60">Carregando conversas...</div>
         ) : null}
