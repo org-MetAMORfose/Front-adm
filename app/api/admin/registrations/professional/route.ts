@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { registerProfessionalThroughChatbot } from "@/lib/chatbotRegistration";
 import { isValidPastDateOnly, PROFESSIONAL_BACKGROUND_MAX_LENGTH } from "@/lib/matchingDomain";
 import { isValidBrazilianMobile, normalizeBrazilianPhone } from "@/lib/phone";
+import type { ProfessionalRegistrationPayload } from "@/types/matching";
 
 function text(body: Record<string, unknown>, field: string) {
   return typeof body[field] === "string" ? body[field].trim() : "";
@@ -12,49 +13,56 @@ function invalid(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
-export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+type ValidationResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string };
 
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return invalid("O corpo da requisição deve ser um JSON válido.");
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseProfessionalRegistration(
+  value: unknown
+): ValidationResult<ProfessionalRegistrationPayload> {
+  if (!isRecord(value)) {
+    return { ok: false, error: "O corpo deve ser um objeto JSON válido." };
   }
 
-  const name = text(body, "name");
-  const rawPhone = text(body, "phone_number");
-  const birthDate = text(body, "birth_date");
-  const cpf = text(body, "cpf").replace(/\D/g, "");
-  const area = text(body, "area");
-  const professionalRegister = text(body, "professional_register");
-  const registerType = text(body, "register_type");
-  const email = text(body, "email");
-  const approach = text(body, "approach");
-  const background = text(body, "background");
-  const videoPlatform = text(body, "video_platform");
-  const gender = text(body, "gender");
-  const minorityGroup = text(body, "minority_group");
+  const name = text(value, "name");
+  const rawPhone = text(value, "phone_number");
+  const birthDate = text(value, "birth_date");
+  const cpf = text(value, "cpf").replace(/\D/g, "");
+  const area = text(value, "area");
+  const professionalRegister = text(value, "professional_register");
+  const registerType = text(value, "register_type");
+  const email = text(value, "email");
+  const approach = text(value, "approach");
+  const background = text(value, "background");
+  const videoPlatform = text(value, "video_platform");
+  const gender = text(value, "gender");
+  const minorityGroup = text(value, "minority_group");
 
-  if (name.length < 2) return invalid("Informe o nome completo do profissional.");
+  if (name.length < 2) return { ok: false, error: "Informe o nome completo do profissional." };
   if (!isValidBrazilianMobile(rawPhone)) {
-    return invalid("Informe um celular brasileiro válido.");
+    return { ok: false, error: "Informe um celular brasileiro válido." };
   }
   if (birthDate && !isValidPastDateOnly(birthDate)) {
-    return invalid("Informe uma data de nascimento válida.");
+    return { ok: false, error: "Informe uma data de nascimento válida." };
   }
-  if (cpf && cpf.length !== 11) return invalid("O CPF deve conter 11 dígitos.");
-  if (!area) return invalid("Informe a área de atuação.");
-  if (!professionalRegister) return invalid("Informe o registro profissional.");
-  if (!registerType) return invalid("Informe o tipo de registro.");
+  if (cpf && cpf.length !== 11) return { ok: false, error: "O CPF deve conter 11 dígitos." };
+  if (!area) return { ok: false, error: "Informe a área de atuação." };
+  if (!professionalRegister) return { ok: false, error: "Informe o registro profissional." };
+  if (!registerType) return { ok: false, error: "Informe o tipo de registro." };
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return invalid("Informe um e-mail válido.");
+    return { ok: false, error: "Informe um e-mail válido." };
   }
   if (background.length > PROFESSIONAL_BACKGROUND_MAX_LENGTH) {
-    return invalid(`O background deve ter no máximo ${PROFESSIONAL_BACKGROUND_MAX_LENGTH} caracteres.`);
+    return { ok: false, error: `O background deve ter no máximo ${PROFESSIONAL_BACKGROUND_MAX_LENGTH} caracteres.` };
   }
 
-  try {
-    const external = await registerProfessionalThroughChatbot({
+  return {
+    ok: true,
+    value: {
       name,
       phone_number: normalizeBrazilianPhone(rawPhone),
       ...(birthDate ? { birth_date: birthDate } : {}),
@@ -68,7 +76,25 @@ export async function POST(request: Request) {
       ...(email ? { email } : {}),
       ...(gender ? { gender } : {}),
       ...(minorityGroup ? { minority_group: minorityGroup } : {})
-    });
+    }
+  };
+}
+
+export async function POST(request: Request) {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return invalid("O corpo da requisição deve ser um JSON válido.");
+  }
+
+  const parsed = parseProfessionalRegistration(body);
+  if (!parsed.ok) return invalid(parsed.error);
+  const payload = parsed.value;
+
+  try {
+    const external = await registerProfessionalThroughChatbot(payload);
 
     if (!external.ok) {
       return NextResponse.json(

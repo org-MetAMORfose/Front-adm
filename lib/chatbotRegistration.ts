@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { ProfessionalRegistrationPayload } from "@/types/matching";
+
 async function readResponseBody(response: Response) {
   const text = await response.text();
   if (!text) return null;
@@ -17,7 +19,9 @@ function registrationUrl() {
   return url;
 }
 
-async function registerThroughChatbot(payload: Record<string, unknown>) {
+async function registerThroughChatbot(
+  payload: ProfessionalRegistrationPayload
+) {
   const response = await fetch(registrationUrl(), {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -32,6 +36,8 @@ async function registerThroughChatbot(payload: Record<string, unknown>) {
   };
 }
 
-export function registerProfessionalThroughChatbot(payload: Record<string, unknown>) {
+export function registerProfessionalThroughChatbot(
+  payload: ProfessionalRegistrationPayload
+) {
   return registerThroughChatbot(payload);
 }

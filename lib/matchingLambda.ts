@@ -2,6 +2,8 @@ import "server-only";
 
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 
+import type { PatientRegistrationPayload } from "@/types/matching";
+
 let lambdaClient: LambdaClient | undefined;
 
 function configuration() {
@@ -29,7 +31,9 @@ function decodePayload(payload?: Uint8Array) {
   }
 }
 
-export async function invokeMatchingLambda(payload: unknown) {
+export async function invokeMatchingLambda(
+  payload: PatientRegistrationPayload | PatientRegistrationPayload[]
+) {
   const { region, functionName } = configuration();
   const response = await client(region).send(
     new InvokeCommand({

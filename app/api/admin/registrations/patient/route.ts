@@ -4,16 +4,7 @@ import { prisma } from "@/lib/db";
 import { invokeMatchingLambda } from "@/lib/matchingLambda";
 import { isValidPastDateOnly, normalizeSearch } from "@/lib/matchingDomain";
 import { isValidBrazilianMobile, normalizeBrazilianPhone } from "@/lib/phone";
-
-type PatientPayload = {
-  name: string;
-  phone_number: string;
-  birth_date: string;
-  area: string;
-  psychotherapy_approach?: string;
-  professional_profile: string;
-  price_range?: string;
-};
+import type { PatientRegistrationPayload } from "@/types/matching";
 
 function text(body: Record<string, unknown>, field: string): string {
   return typeof body[field] === "string" ? body[field].trim() : "";
@@ -47,7 +38,7 @@ function validatePatient(body: Record<string, unknown>, row: number) {
       ...(approach ? { psychotherapy_approach: approach } : {}),
       professional_profile: profile,
       ...(priceRange ? { price_range: priceRange } : {})
-    } satisfies PatientPayload
+    } satisfies PatientRegistrationPayload
   };
 }
 
