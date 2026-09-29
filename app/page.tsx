@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ChatWindow } from "@/components/ChatWindow";
 import { ConversationList } from "@/components/ConversationList";
 import { withBasePath } from "@/lib/basePath";
@@ -42,25 +43,29 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!selectedPersonId && conversations[0]) {
-      setSelectedPersonId(conversations[0].person_id);
+      const requestedPersonId = Number(
+        new URLSearchParams(window.location.search).get("personId")
+      );
+      const requestedConversation = conversations.find(
+        (conversation) => conversation.person_id === requestedPersonId
+      );
+      setSelectedPersonId(
+        requestedConversation?.person_id ?? conversations[0].person_id
+      );
     }
   }, [conversations, selectedPersonId]);
 
   return (
     <main className="flex min-h-screen flex-col bg-mist text-ink">
-      <header className="border-b border-black/10 bg-white px-4 py-3 shadow-subtle sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">MetaAmorfose Admin</h1>
-            <p className="text-sm text-ink/60">
-              Conversas, mídia recebida e aprovação de profissionais.
-            </p>
-          </div>
+      <AdminHeader
+        title="MetaAmorfose Admin"
+        description="Conversas, mídia recebida e aprovação de profissionais."
+        actions={
           <div className="rounded border border-black/10 bg-mist px-3 py-2 text-sm text-ink/70">
             Polling ativo
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <section className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[380px_1fr]">
         <ConversationList

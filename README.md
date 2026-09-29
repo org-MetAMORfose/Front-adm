@@ -1,6 +1,6 @@
 # MetaAmorfose Admin Panel
 
-Painel fullstack em Next.js para visualizar conversas do chatbot, enviar mensagens manuais, consultar imagens, videos e documentos recebidos e solicitar aprovacao de profissionais por endpoint HTTP.
+Painel fullstack em Next.js para visualizar conversas, gerenciar ciclos de matching, acompanhar a distribuicao de pacientes e encaminhar cadastros administrativos ao chatbot.
 
 ## Arquitetura
 
@@ -8,7 +8,8 @@ Painel fullstack em Next.js para visualizar conversas do chatbot, enviar mensage
 - `app/api/admin/*`: API routes server-only para leitura no PostgreSQL, acesso ao S3 e forwarding HTTP.
 - `lib/db.ts`: cliente Prisma compartilhado usando `DATABASE_URL` apenas no servidor.
 - `lib/s3.ts`: cliente S3 compartilhado, usado apenas pelo backend do Next.js.
-- `lib/queries.ts`: consultas somente leitura (`SELECT`).
+- `lib/queries.ts` e `lib/matchingQueries.ts`: consultas server-only.
+- `app/distribuicao` e `app/profissionais/[professionalId]`: gestao e consulta do matching.
 - `lib/messageSender.ts`: envio de mensagem e aprovacao via endpoints externos.
 - `components/*`: componentes client com TanStack Query e polling.
 
@@ -17,8 +18,8 @@ Painel fullstack em Next.js para visualizar conversas do chatbot, enviar mensage
 - `DATABASE_URL` nunca deve ser exposta no client.
 - As credenciais AWS e as chaves privadas do S3 nunca sao expostas no client.
 - Nao use `NEXT_PUBLIC_DATABASE_URL`.
-- O banco e tratado como somente leitura.
-- Nao ha `INSERT`, `UPDATE` ou `DELETE` no codigo.
+- O painel le as tabelas operacionais e cria somente registros em `matching_cycle`.
+- Cadastros de pacientes sao encaminhados ao chatbot; o painel nao escreve em `person` ou `patient`.
 - Envio de mensagem e aprovacao sao feitos por HTTP externo.
 - Nao commite `.env` real.
 
@@ -44,6 +45,9 @@ SEND_MESSAGE_URL="https://HOST/send"
 UPLOAD_MEDIA_URL="https://HOST/upload-media"
 APPROVE_PROFESSIONAL_URL=""
 S3_BUCKET_NAME=""
+MATCHING_LAMBDA_NAME="matching"
+CHATBOT_CREATE_PROFESSIONAL_URL=""
+MATCHING_FOLLOWUP_TEMPLATE_URL="http://localhost:8000/whatsapp/templates/acompanhamento_emparelhamento"
 AWS_ACCESS_KEY_ID=""
 AWS_SECRET_ACCESS_KEY=""
 AWS_REGION="us-east-1"
@@ -51,10 +55,14 @@ CHATBOT_DOCKER_NETWORK="whatsapp-chatbot_chatbot_net"
 ```
 
 `APPROVE_PROFESSIONAL_URL` pode ser uma URL direta ou conter `{professionalId}` para substituicao no envio.
+`MATCHING_LAMBDA_NAME` identifica a função AWS que recebe um paciente ou um lote normalizado e executa o matching.
+`CHATBOT_CREATE_PROFESSIONAL_URL` recebe os dados pessoais e profissionais normalizados.
+`MATCHING_FOLLOWUP_TEMPLATE_URL` recebe os telefones do paciente e do profissional para enviar o template de acompanhamento.
 `UPLOAD_MEDIA_URL` deve apontar para o endpoint `POST /upload-media` do FastAPI.
 O bucket deve ser privado e permitir `s3:GetObject` para o backend do painel no
 prefixo `media/*`. Em ambientes com IAM Role, as duas variaveis de credenciais
 podem ficar vazias; o SDK da AWS usa a cadeia padrao de credenciais.
+Para o cadastro de pacientes, a credencial também precisa permitir `lambda:InvokeFunction` na função configurada.
 Use os valores reais apenas no `.env` local.
 
 ## Fluxo de midia
@@ -172,6 +180,9 @@ Secrets usadas pelo workflow de CD:
 - `SEND_MESSAGE_URL`;
 - `UPLOAD_MEDIA_URL`;
 - `APPROVE_PROFESSIONAL_URL` (opcional enquanto a aprovacao estiver desativada);
+- `MATCHING_LAMBDA_NAME`;
+- `CHATBOT_CREATE_PROFESSIONAL_URL`;
+- `MATCHING_FOLLOWUP_TEMPLATE_URL`;
 - `S3_BUCKET_NAME`;
 - `AWS_ACCESS_KEY_ID`;
 - `AWS_SECRET_ACCESS_KEY`;

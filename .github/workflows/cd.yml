@@ -48,6 +48,9 @@ jobs:
           SEND_MESSAGE_URL: ${{ secrets.SEND_MESSAGE_URL }}
           UPLOAD_MEDIA_URL: ${{ secrets.UPLOAD_MEDIA_URL }}
           APPROVE_PROFESSIONAL_URL: ${{ secrets.APPROVE_PROFESSIONAL_URL }}
+          MATCHING_LAMBDA_NAME: ${{ vars.MATCHING_LAMBDA_NAME || 'matching' }}
+          CHATBOT_CREATE_PROFESSIONAL_URL: ${{ secrets.CHATBOT_CREATE_PROFESSIONAL_URL }}
+          MATCHING_FOLLOWUP_TEMPLATE_URL: ${{ secrets.MATCHING_FOLLOWUP_TEMPLATE_URL }}
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -57,7 +60,7 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          envs: DEPLOY_SHA,DEPLOY_ARCHIVE_PATH,DATABASE_URL,SEND_MESSAGE_URL,UPLOAD_MEDIA_URL,APPROVE_PROFESSIONAL_URL,S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,CHATBOT_DOCKER_NETWORK
+          envs: DEPLOY_SHA,DEPLOY_ARCHIVE_PATH,DATABASE_URL,SEND_MESSAGE_URL,UPLOAD_MEDIA_URL,APPROVE_PROFESSIONAL_URL,MATCHING_LAMBDA_NAME,CHATBOT_CREATE_PROFESSIONAL_URL,MATCHING_FOLLOWUP_TEMPLATE_URL,S3_BUCKET_NAME,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,CHATBOT_DOCKER_NETWORK
           script_stop: true
           script: |
             set -eu
@@ -84,6 +87,7 @@ jobs:
             : "${AWS_ACCESS_KEY_ID:?GitHub Secret AWS_ACCESS_KEY_ID is required}"
             : "${AWS_SECRET_ACCESS_KEY:?GitHub Secret AWS_SECRET_ACCESS_KEY is required}"
             : "${AWS_REGION:?GitHub Secret AWS_REGION is required}"
+            : "${MATCHING_LAMBDA_NAME:?GitHub Secret MATCHING_LAMBDA_NAME is required}"
             : "${CHATBOT_DOCKER_NETWORK:?GitHub Secret CHATBOT_DOCKER_NETWORK is required}"
 
             umask 077
@@ -92,6 +96,9 @@ jobs:
               printf '%s\n' "SEND_MESSAGE_URL=$SEND_MESSAGE_URL"
               printf '%s\n' "UPLOAD_MEDIA_URL=$UPLOAD_MEDIA_URL"
               printf '%s\n' "APPROVE_PROFESSIONAL_URL=${APPROVE_PROFESSIONAL_URL:-}"
+              printf '%s\n' "MATCHING_LAMBDA_NAME=$MATCHING_LAMBDA_NAME"
+              printf '%s\n' "CHATBOT_CREATE_PROFESSIONAL_URL=${CHATBOT_CREATE_PROFESSIONAL_URL:-}"
+              printf '%s\n' "MATCHING_FOLLOWUP_TEMPLATE_URL=${MATCHING_FOLLOWUP_TEMPLATE_URL:-}"
               printf '%s\n' "S3_BUCKET_NAME=$S3_BUCKET_NAME"
               printf '%s\n' "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
               printf '%s\n' "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
