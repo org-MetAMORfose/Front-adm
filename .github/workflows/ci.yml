@@ -72,6 +72,9 @@ jobs:
             -e SEND_MESSAGE_URL=http://127.0.0.1:8000/send \
             -e UPLOAD_MEDIA_URL=http://127.0.0.1:8000/upload-media \
             -e APPROVE_PROFESSIONAL_URL=http://127.0.0.1:8000/approve \
+            -e MATCHING_LAMBDA_NAME=matching \
+            -e CHATBOT_CREATE_PROFESSIONAL_URL=http://127.0.0.1:8000/professionals \
+            -e MATCHING_FOLLOWUP_TEMPLATE_URL=http://127.0.0.1:8000/whatsapp/templates/acompanhamento_emparelhamento \
             -e S3_BUCKET_NAME=front-adm-ci \
             -e AWS_ACCESS_KEY_ID=test \
             -e AWS_SECRET_ACCESS_KEY=test \

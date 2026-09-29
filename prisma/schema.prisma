@@ -26,7 +26,7 @@ model patient {
   professional_profile   String?                @db.VarChar
   price_range            String?                @db.VarChar
   person                 person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  professional_patient   professional_patient[]
+  matching_slot          matching_slot[]
 }
 
 model person {
@@ -38,6 +38,7 @@ model person {
   created_at      DateTime          @db.Timestamp(6)
   chat_state      chatstate?
   chat_mode       chatmode
+  birth_date      DateTime?         @db.Date
   message_history message_history[]
   patient         patient[]
   professional    professional?
@@ -56,22 +57,59 @@ model professional {
   video_platform        String?                @db.VarChar
   email                 String?                @db.VarChar
   created_at            DateTime               @db.Timestamp(6)
+  gender                String?                @db.VarChar
+  minority_group        String?                @db.VarChar
+  matching_cycle        matching_cycle[]
   person                person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  professional_patient  professional_patient[]
 
   @@unique([register_type, professional_register], map: "uq_professional_register")
 }
 
-model professional_patient {
-  id              Int          @id @default(autoincrement())
-  professional_id Int
-  patient_id      Int
-  created_at      DateTime     @db.Timestamp(6)
-  deleted         Boolean      @default(false)
-  patient         patient      @relation(fields: [patient_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  professional    professional @relation(fields: [professional_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model matching_cycle {
+  id                Int                 @id @default(autoincrement())
+  professional_id   Int
+  type              matching_cycle_type
+  promised_patients Int
+  starts_at         DateTime            @db.Timestamptz(6)
+  deadline_at       DateTime            @db.Timestamptz(6)
+  cancelled_at      DateTime?           @db.Timestamptz(6)
+  created_at        DateTime            @db.Timestamptz(6)
+  professional      professional        @relation(fields: [professional_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  matching_slot     matching_slot[]
 
-  @@unique([professional_id, patient_id], map: "uq_professional_patient")
+  @@index([deadline_at], map: "ix_matching_cycle_deadline_at")
+}
+
+model matching_slot {
+  id                  Int            @id @default(autoincrement())
+  cycle_id            Int
+  patient_id          Int
+  compatibility_score Float
+  urgency_score       Float
+  final_score         Float
+  score_breakdown     Json
+  algorithm_version   String         @db.VarChar
+  created_at          DateTime       @db.Timestamptz(6)
+  cycle               matching_cycle @relation(fields: [cycle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  patient             patient        @relation(fields: [patient_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([cycle_id, patient_id])
+  @@index([cycle_id], map: "ix_matching_slot_cycle_id")
+}
+
+model outbox {
+  id           String    @id @db.VarChar
+  kind         String    @db.VarChar
+  payload      Json
+  status       String    @db.VarChar
+  available_at DateTime  @db.Timestamptz(6)
+  attempts     Int
+  locked_until DateTime? @db.Timestamptz(6)
+  last_error   String?
+  created_at   DateTime  @db.Timestamptz(6)
+
+  @@index([status, locked_until], map: "ix_outbox_lease")
+  @@index([status, available_at], map: "ix_outbox_ready")
 }
 
 enum channel {
@@ -92,4 +130,9 @@ enum chatstate {
   RETURNING_PATIENT
   PAYMENT_RENEWAL
   PROFESSIONAL_REGISTRATION
+}
+
+enum matching_cycle_type {
+  REGULAR
+  REPLACEMENT
 }

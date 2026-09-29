@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ImagePreviewModal } from "@/components/ImagePreviewModal";
 import { MessageBubble } from "@/components/MessageBubble";
-import { ProfessionalCard } from "@/components/ProfessionalCard";
+import { ProfessionalProfileLink } from "@/components/ProfessionalProfileLink";
 import { withBasePath } from "@/lib/basePath";
 import {
   CHAT_STATE_LABELS,
@@ -317,7 +317,7 @@ export function ChatWindow({ conversation }: Props) {
         </div>
       </div>
 
-      <ProfessionalCard
+      <ProfessionalProfileLink
         professional={professionalQuery.data?.professional ?? null}
         isLoading={professionalQuery.isLoading}
       />
