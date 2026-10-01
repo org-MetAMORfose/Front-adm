@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
+import "@xyflow/react/dist/style.css";
 import { Providers } from "@/app/providers";
 
 export const metadata: Metadata = {

@@ -10,6 +10,7 @@ Painel fullstack em Next.js para visualizar conversas, gerenciar ciclos de match
 - `lib/s3.ts`: cliente S3 compartilhado, usado apenas pelo backend do Next.js.
 - `lib/queries.ts` e `lib/matchingQueries.ts`: consultas server-only.
 - `app/distribuicao` e `app/profissionais/[professionalId]`: gestao e consulta do matching.
+- `app/fluxo`: revisoes e editor visual do fluxo do chatbot, integrado por proxy server-side.
 - `lib/messageSender.ts`: envio de mensagem e aprovacao via endpoints externos.
 - `components/*`: componentes client com TanStack Query e polling.
 
@@ -48,6 +49,8 @@ S3_BUCKET_NAME=""
 MATCHING_LAMBDA_NAME="matching"
 CHATBOT_CREATE_PROFESSIONAL_URL=""
 MATCHING_FOLLOWUP_TEMPLATE_URL="http://localhost:8000/whatsapp/templates/acompanhamento_emparelhamento"
+CHATBOT_FLOW_API_URL="http://localhost:8000"
+CHATBOT_API_KEY=""
 AWS_ACCESS_KEY_ID=""
 AWS_SECRET_ACCESS_KEY=""
 AWS_REGION="us-east-1"
@@ -57,6 +60,7 @@ CHATBOT_DOCKER_NETWORK="whatsapp-chatbot_chatbot_net"
 `APPROVE_PROFESSIONAL_URL` pode ser uma URL direta ou conter `{professionalId}` para substituicao no envio.
 `MATCHING_LAMBDA_NAME` identifica a função AWS que recebe um paciente ou um lote normalizado e executa o matching.
 `CHATBOT_CREATE_PROFESSIONAL_URL` recebe os dados pessoais e profissionais normalizados.
+`CHATBOT_FLOW_API_URL` aponta para o FastAPI que fornece `/chatbot-flow`; `CHATBOT_API_KEY` fica somente no servidor Next.js e nunca usa prefixo `NEXT_PUBLIC_`.
 `MATCHING_FOLLOWUP_TEMPLATE_URL` recebe os telefones do paciente e do profissional para enviar o template de acompanhamento.
 `UPLOAD_MEDIA_URL` deve apontar para o endpoint `POST /upload-media` do FastAPI.
 O bucket deve ser privado e permitir `s3:GetObject` para o backend do painel no
