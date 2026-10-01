@@ -280,13 +280,193 @@ export function limitButtonLabel(value: string) {
 }
 
 export function normalizeButtonExpectedValue(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toLowerCase();
+  return value.trim().toLowerCase();
 }
 
+
+export type AddButtonOptions = {
+  sourceNodeId: number;
+  templateTransitionId?: number | null;
+  label: string;
+  destinationNodeId?: number | null;
+  newNode?: {
+    title: string;
+    message: string;
+  };
+};
+
+export function addButtonToFlow(
+  graph: FlowGraph,
+  options: AddButtonOptions
+): { graph: FlowGraph; transitionId: number; nodeId?: number } {
+  const source = graph.nodes.find((node) => node.id === options.sourceNodeId);
+  if (!source) throw new Error("Nó de origem não encontrado.");
+  if (source.type === "END") throw new Error("Um nó END não pode possuir botões.");
+
+  const label = limitButtonLabel(options.label.trim());
+  if (!label) throw new Error("Informe o nome do botão.");
+  const expectedValue = normalizeButtonExpectedValue(label);
+  const duplicate = graph.transitions.some(
+    (transition) =>
+      transition.node_id === source.id &&
+      transition.button_label !== null &&
+      normalizeButtonExpectedValue(transition.button_label) === expectedValue
+  );
+  if (duplicate) throw new Error("Já existe um botão com esse nome neste nó.");
+
+  const template = options.templateTransitionId == null
+    ? null
+    : graph.transitions.find((transition) => transition.id === options.templateTransitionId);
+  if (options.templateTransitionId != null && (!template || template.node_id !== source.id)) {
+    throw new Error("O grupo de actions não pertence ao nó de origem.");
+  }
+
+  let draftId = nextDraftEntityId(graph);
+  let createdNode: FlowNode | undefined;
+  let destinationNodeId = options.destinationNodeId ?? null;
+  if (options.newNode) {
+    const title = options.newNode.title.trim() || "Novo nó";
+    createdNode = {
+      id: draftId,
+      key: `novo_no_${Math.abs(draftId)}`,
+      type: "MESSAGE",
+      title,
+      description: null,
+      message: options.newNode.message.trim() || "Nova mensagem",
+      position: Math.max(0, ...graph.nodes.map((node) => node.position)) + 1,
+      position_x: source.position_x + 360,
+      position_y: source.position_y + Math.max(0, graph.transitions.filter((transition) => transition.node_id === source.id).length - 1) * 70
+    };
+    destinationNodeId = draftId;
+    draftId -= 1;
+  }
+  if (destinationNodeId == null || (!createdNode && !graph.nodes.some((node) => node.id === destinationNodeId))) {
+    throw new Error("Selecione um nó de destino.");
+  }
+
+  const outgoing = graph.transitions.filter((transition) => transition.node_id === source.id);
+  const genericTextPositions = outgoing
+    .filter((transition) => transition.input_type === "TEXT" && transition.expected_value === null && transition.button_label === null)
+    .map((transition) => transition.position);
+  const position = genericTextPositions.length
+    ? Math.min(...genericTextPositions)
+    : Math.max(-1, ...outgoing.map((transition) => transition.position)) + 1;
+  const transitionId = draftId;
+  draftId -= 1;
+  const transition: FlowTransition = {
+    id: transitionId,
+    node_id: source.id,
+    input_type: "TEXT",
+    expected_value: expectedValue,
+    button_label: label,
+    next_node_id: destinationNodeId,
+    position
+  };
+
+  const templateActions = template
+    ? graph.transition_actions.filter((action) => action.transition_id === template.id)
+    : [];
+  const copiedActions: FlowTransitionAction[] = templateActions.map((action) => ({
+    id: draftId--,
+    transition_id: transitionId,
+    action_key: action.action_key,
+    config: action.config === null ? null : structuredClone(action.config),
+    is_required: action.is_required
+  }));
+
+  return {
+    transitionId,
+    nodeId: createdNode?.id,
+    graph: {
+      ...graph,
+      nodes: createdNode ? [...graph.nodes, createdNode] : graph.nodes,
+      transitions: [
+        ...graph.transitions.map((item) => item.node_id === source.id && item.position >= position
+          ? { ...item, position: item.position + 1 }
+          : item),
+        transition
+      ],
+      transition_actions: [...graph.transition_actions, ...copiedActions]
+    }
+  };
+}
+
+export type AddInputTypeOptions = {
+  sourceNodeId: number;
+  templateTransitionId?: number | null;
+  inputType: FlowTransition["input_type"];
+  destinationNodeId: number;
+};
+
+export function addInputTypeToFlow(
+  graph: FlowGraph,
+  options: AddInputTypeOptions
+): { graph: FlowGraph; transitionId: number } {
+  const source = graph.nodes.find((node) => node.id === options.sourceNodeId);
+  if (!source) throw new Error("Nó de origem não encontrado.");
+  if (source.type === "END") throw new Error("Um nó END não pode aceitar entradas.");
+  if (options.inputType === "AUTO") throw new Error("AUTO não é uma tipagem de entrada adicionável.");
+  if (!graph.nodes.some((node) => node.id === options.destinationNodeId)) throw new Error("Selecione um nó de destino.");
+
+  const template = options.templateTransitionId == null
+    ? null
+    : graph.transitions.find((transition) => transition.id === options.templateTransitionId);
+  if (options.templateTransitionId != null && (!template || template.node_id !== source.id)) {
+    throw new Error("O grupo de actions não pertence ao nó de origem.");
+  }
+  const signature = template ? transitionActionSignature(graph, template.id) : "__sem_action__";
+  const duplicate = graph.transitions.some(
+    (transition) =>
+      transition.node_id === source.id &&
+      transition.next_node_id === options.destinationNodeId &&
+      transition.input_type === options.inputType &&
+      transition.button_label === null &&
+      transition.expected_value === null &&
+      transitionActionSignature(graph, transition.id) === signature
+  );
+  if (duplicate) throw new Error("Este tipo já existe no grupo selecionado.");
+
+  const outgoing = graph.transitions.filter((transition) => transition.node_id === source.id);
+  const automaticPositions = outgoing.filter((transition) => transition.input_type === "AUTO").map((transition) => transition.position);
+  const position = automaticPositions.length
+    ? Math.min(...automaticPositions)
+    : Math.max(-1, ...outgoing.map((transition) => transition.position)) + 1;
+  let draftId = nextDraftEntityId(graph);
+  const transitionId = draftId--;
+  const transition: FlowTransition = {
+    id: transitionId,
+    node_id: source.id,
+    input_type: options.inputType,
+    expected_value: null,
+    button_label: null,
+    next_node_id: options.destinationNodeId,
+    position
+  };
+  const templateActions = template
+    ? graph.transition_actions.filter((action) => action.transition_id === template.id)
+    : [];
+  const copiedActions: FlowTransitionAction[] = templateActions.map((action) => ({
+    id: draftId--,
+    transition_id: transitionId,
+    action_key: action.action_key,
+    config: action.config === null ? null : structuredClone(action.config),
+    is_required: action.is_required
+  }));
+
+  return {
+    transitionId,
+    graph: {
+      ...graph,
+      transitions: [
+        ...graph.transitions.map((item) => item.node_id === source.id && item.position >= position
+          ? { ...item, position: item.position + 1 }
+          : item),
+        transition
+      ],
+      transition_actions: [...graph.transition_actions, ...copiedActions]
+    }
+  };
+}
 export function transitionActionSignature(graph: FlowGraph, transitionId: number) {
   const actions = graph.transition_actions.filter((action) => action.transition_id === transitionId);
   if (!actions.length) return "__sem_action__";
@@ -309,8 +489,29 @@ export function groupedButtonTransitions(graph: FlowGraph, transitionId: number)
     .sort((left, right) => left.position - right.position || left.id - right.id);
 }
 
+
+export function groupedInputTransitions(graph: FlowGraph, transitionId: number) {
+  const selected = graph.transitions.find((transition) => transition.id === transitionId);
+  const groupable = selected && selected.button_label === null && selected.expected_value === null && selected.input_type !== "AUTO";
+  if (!selected || !groupable) return selected ? [selected] : [];
+  const signature = transitionActionSignature(graph, selected.id);
+  return graph.transitions
+    .filter(
+      (transition) =>
+        transition.node_id === selected.node_id &&
+        transition.next_node_id === selected.next_node_id &&
+        transition.button_label === null &&
+        transition.expected_value === null &&
+        transition.input_type !== "AUTO" &&
+        transitionActionSignature(graph, transition.id) === signature
+    )
+    .sort((left, right) => left.position - right.position || left.id - right.id);
+}
 export function sameTransitionGroup(graph: FlowGraph, leftId: number, rightId: number) {
-  const group = groupedButtonTransitions(graph, leftId);
+  const selected = graph.transitions.find((transition) => transition.id === leftId);
+  const group = selected?.button_label !== null
+    ? groupedButtonTransitions(graph, leftId)
+    : groupedInputTransitions(graph, leftId);
   return group.some((transition) => transition.id === rightId);
 }
 

@@ -12,13 +12,25 @@ export type NormalEdgeData = {
   labels: string[];
   errorCount: number;
   transitionIds: number[];
+  curveOffset?: number;
+  kind?: "input" | "button" | "transition";
 };
 
 export type NormalCanvasEdge = Edge<NormalEdgeData, "normal">;
 
 export function NormalEdge(props: EdgeProps<NormalCanvasEdge>) {
-  const [path, labelX, labelY] = getBezierPath(props);
-  const color = props.data?.errorCount ? "#d96f54" : props.selected ? "#d58b16" : "#6f8f7a";
+  const curveOffset = props.data?.curveOffset ?? 0;
+  const [defaultPath, defaultLabelX, defaultLabelY] = getBezierPath(props);
+  const dx = props.targetX - props.sourceX;
+  const dy = props.targetY - props.sourceY;
+  const distance = Math.hypot(dx, dy) || 1;
+  const controlX = (props.sourceX + props.targetX) / 2 - (dy / distance) * curveOffset;
+  const controlY = (props.sourceY + props.targetY) / 2 + (dx / distance) * curveOffset;
+  const path = curveOffset === 0 ? defaultPath : `M ${props.sourceX},${props.sourceY} Q ${controlX},${controlY} ${props.targetX},${props.targetY}`;
+  const labelX = curveOffset === 0 ? defaultLabelX : props.sourceX * 0.25 + controlX * 0.5 + props.targetX * 0.25;
+  const labelY = curveOffset === 0 ? defaultLabelY : props.sourceY * 0.25 + controlY * 0.5 + props.targetY * 0.25;
+  const baseColor = props.data?.kind === "input" ? "#58718d" : "#6f8f7a";
+  const color = props.data?.errorCount ? "#d96f54" : props.selected ? "#d58b16" : baseColor;
   const labels = props.data?.labels ?? [];
   return (
     <>
@@ -39,7 +51,9 @@ export function NormalEdge(props: EdgeProps<NormalCanvasEdge>) {
               ? "border-amber-400 bg-amber-50 text-amber-900"
               : props.data?.errorCount
                 ? "border-coral/40 bg-red-50 text-coral"
-                : "border-sage/25 bg-white/95 text-[#526b5a]"
+                : props.data?.kind === "input"
+                  ? "border-[#58718d]/30 bg-slate-50/95 text-[#40566d]"
+                  : "border-sage/25 bg-white/95 text-[#526b5a]"
           }`}
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
         >

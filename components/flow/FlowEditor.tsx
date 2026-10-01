@@ -172,28 +172,64 @@ function LoadedFlowEditor({
     const visualGroups = new Map<string, FlowTransition[]>();
 
     for (const transition of editor.graph.transitions) {
+      const signature = transitionActionSignature(editor.graph, transition.id);
       const key = transition.button_label !== null
-        ? `${transition.node_id}:${transition.next_node_id}:${transitionActionSignature(editor.graph, transition.id)}`
-        : `transition:${transition.id}`;
+        ? `button:${transition.node_id}:${transition.next_node_id}:${signature}`
+        : transition.expected_value === null && transition.input_type !== "AUTO"
+          ? `input:${transition.node_id}:${transition.next_node_id}:${signature}`
+          : `transition:${transition.id}`;
       visualGroups.set(key, [...(visualGroups.get(key) ?? []), transition]);
     }
 
-    for (const transitions of visualGroups.values()) {
+    const groupKind = (transition: FlowTransition): "input" | "button" | "transition" =>
+      transition.button_label !== null
+        ? "button"
+        : transition.expected_value === null && transition.input_type !== "AUTO"
+          ? "input"
+          : "transition";
+    const visualGroupList = [...visualGroups.values()].sort((left, right) => {
+      const leftTransition = left[0];
+      const rightTransition = right[0];
+      return leftTransition.node_id - rightTransition.node_id
+        || leftTransition.next_node_id - rightTransition.next_node_id
+        || ({ input: 0, button: 1, transition: 2 }[groupKind(leftTransition)] - { input: 0, button: 1, transition: 2 }[groupKind(rightTransition)])
+        || leftTransition.position - rightTransition.position;
+    });
+    const pairCounts = new Map<string, number>();
+    for (const transitions of visualGroupList) {
+      const representative = transitions[0];
+      const pairKey = String(representative.node_id) + ":" + representative.next_node_id;
+      pairCounts.set(pairKey, (pairCounts.get(pairKey) ?? 0) + 1);
+    }
+    const pairIndexes = new Map<string, number>();
+
+    for (const transitions of visualGroupList) {
       const orderedTransitions = [...transitions].sort((left, right) => left.position - right.position || left.id - right.id);
       const representative = orderedTransitions[0];
+      const kind = groupKind(representative);
+      const pairKey = String(representative.node_id) + ":" + representative.next_node_id;
+      const pairCount = pairCounts.get(pairKey) ?? 1;
+      const pairIndex = pairIndexes.get(pairKey) ?? 0;
+      pairIndexes.set(pairKey, pairIndex + 1);
+      const curveOffset = pairCount > 1 ? (pairIndex - (pairCount - 1) / 2) * 72 : 0;
       const errorCount = orderedTransitions.reduce((count, transition) => count + errorsForElement(displayedErrors, "transition", transition.id).filter((error) => error.action_id == null).length, 0);
       const selected = selection?.kind === "transition" && orderedTransitions.some((transition) => sameTransitionGroup(editor.graph, transition.id, selection.id));
+      const baseColor = kind === "input" ? "#58718d" : "#6f8f7a";
       result.push({
         id: `transition-${representative.id}`,
         type: "normal",
         source: `node-${representative.node_id}`,
         target: `node-${representative.next_node_id}`,
         selected,
-        markerEnd: { type: MarkerType.ArrowClosed, color: errorCount ? "#d96f54" : selected ? "#d58b16" : "#6f8f7a" },
+        markerEnd: { type: MarkerType.ArrowClosed, color: errorCount ? "#d96f54" : selected ? "#d58b16" : baseColor },
         data: {
-          labels: orderedTransitions.map((transition) => transition.button_label || transition.expected_value || transition.input_type),
+          labels: representative.button_label !== null
+            ? orderedTransitions.map((transition) => transition.button_label || transition.input_type)
+            : [[...new Set(orderedTransitions.map((transition) => transition.input_type))].join(" ou ")],
           errorCount,
-          transitionIds: orderedTransitions.map((transition) => transition.id)
+          transitionIds: orderedTransitions.map((transition) => transition.id),
+          curveOffset,
+          kind
         },
         interactionWidth: 28
       });
@@ -492,7 +528,7 @@ function LoadedFlowEditor({
             <p data-drag-key className="truncate text-[11px] text-ink/45" />
             <p data-drag-message className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink/65" />
           </div>
-          <div className="pointer-events-none absolute bottom-4 left-16 z-10 flex items-center gap-3 rounded-lg border border-black/10 bg-white/90 px-3 py-2 text-[11px] text-ink/55"><span className="inline-flex items-center gap-1"><span className="h-0.5 w-6 bg-sage" />Transição normal</span><span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rotate-45 bg-[#4776a6]" />Action condicional</span><span className="inline-flex items-center gap-1"><GitBranch className="h-3.5 w-3.5" />Arraste entre conectores para criar</span></div>
+          <div className="pointer-events-none absolute bottom-4 left-16 z-10 flex items-center gap-3 rounded-lg border border-black/10 bg-white/90 px-3 py-2 text-[11px] text-ink/55"><span className="inline-flex items-center gap-1"><span className="h-0.5 w-6 bg-[#58718d]" />Tipo aceito</span><span className="inline-flex items-center gap-1"><span className="h-0.5 w-6 bg-sage" />Botão</span><span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rotate-45 bg-[#4776a6]" />Action condicional</span><span className="inline-flex items-center gap-1"><GitBranch className="h-3.5 w-3.5" />Arraste entre conectores para criar</span></div>
           <FlowValidationPanel result={displayedValidation} stale={validationStale} onClose={() => setValidation(null)} onSelectError={selectValidationError} />
         </section>
       </div>
