@@ -70,6 +70,8 @@ jobs:
           MATCHING_LAMBDA_NAME: ${{ vars.MATCHING_LAMBDA_NAME || 'matching' }}
           CHATBOT_CREATE_PROFESSIONAL_URL: ${{ secrets.CHATBOT_CREATE_PROFESSIONAL_URL }}
           MATCHING_FOLLOWUP_TEMPLATE_URL: ${{ secrets.MATCHING_FOLLOWUP_TEMPLATE_URL }}
+          CHATBOT_FLOW_API_URL: ${{ secrets.CHATBOT_FLOW_API_URL }}
+          CHATBOT_FAQ_API_URL: ${{ secrets.CHATBOT_FAQ_API_URL }}
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -111,6 +113,8 @@ jobs:
             : "${DATABASE_URL:?GitHub Secret DATABASE_URL is required}"
             : "${SEND_MESSAGE_URL:?GitHub Secret SEND_MESSAGE_URL is required}"
             : "${UPLOAD_MEDIA_URL:?GitHub Secret UPLOAD_MEDIA_URL is required}"
+            : "${CHATBOT_FLOW_API_URL:?GitHub Secret CHATBOT_FLOW_API_URL is required}"
+            : "${CHATBOT_FAQ_API_URL:?GitHub Secret CHATBOT_FAQ_API_URL is required}"
             : "${S3_BUCKET_NAME:?GitHub Secret S3_BUCKET_NAME is required}"
             : "${AWS_ACCESS_KEY_ID:?GitHub Secret AWS_ACCESS_KEY_ID is required}"
             : "${AWS_SECRET_ACCESS_KEY:?GitHub Secret AWS_SECRET_ACCESS_KEY is required}"
@@ -127,6 +131,8 @@ jobs:
               printf '%s\n' "MATCHING_LAMBDA_NAME=$MATCHING_LAMBDA_NAME"
               printf '%s\n' "CHATBOT_CREATE_PROFESSIONAL_URL=${CHATBOT_CREATE_PROFESSIONAL_URL:-}"
               printf '%s\n' "MATCHING_FOLLOWUP_TEMPLATE_URL=${MATCHING_FOLLOWUP_TEMPLATE_URL:-}"
+              printf '%s\n' "CHATBOT_FLOW_API_URL=$CHATBOT_FLOW_API_URL"
+              printf '%s\n' "CHATBOT_FAQ_API_URL=$CHATBOT_FAQ_API_URL"
               printf '%s\n' "S3_BUCKET_NAME=$S3_BUCKET_NAME"
               printf '%s\n' "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
               printf '%s\n' "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
