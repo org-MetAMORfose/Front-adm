@@ -1,4 +1,4 @@
-import type { CycleStatus } from "@/types/matching";
+import type { CycleStatus, ProfessionalDistributionItem } from "@/types/matching";
 
 export const PROFESSIONAL_BACKGROUND_MAX_LENGTH = 1000;
 
@@ -18,6 +18,40 @@ export function isActiveCycle(cycle: CycleDates, now = new Date()) {
 
 export function getPendingPatients(promised: number, delivered: number) {
   return Math.max(promised - delivered, 0);
+}
+
+export function isActiveCycleWithPending(
+  cycle: CycleDates,
+  promised: number,
+  delivered: number,
+  now = new Date()
+) {
+  return isActiveCycle(cycle, now) && getPendingPatients(promised, delivered) > 0;
+}
+
+export function compareProfessionalsByPriority(
+  left: ProfessionalDistributionItem,
+  right: ProfessionalDistributionItem
+) {
+  if (left.is_active !== right.is_active) return left.is_active ? -1 : 1;
+
+  if (left.is_active && right.is_active) {
+    const deadlineComparison = (left.next_deadline ?? "9999").localeCompare(
+      right.next_deadline ?? "9999"
+    );
+    if (deadlineComparison) return deadlineComparison;
+    const deliveredComparison = left.delivered_patients - right.delivered_patients;
+    if (deliveredComparison) return deliveredComparison;
+  } else {
+    const completionComparison = (right.last_completed_at ?? "").localeCompare(
+      left.last_completed_at ?? ""
+    );
+    if (completionComparison) return completionComparison;
+    const deliveredComparison = left.delivered_patients - right.delivered_patients;
+    if (deliveredComparison) return deliveredComparison;
+  }
+
+  return left.name.localeCompare(right.name, "pt-BR");
 }
 
 export function getCycleStatus(

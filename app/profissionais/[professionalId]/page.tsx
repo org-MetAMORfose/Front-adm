@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   CalendarClock,
   CalendarPlus,
+  Pencil,
   MessageSquareText,
   RotateCcw,
   Users
@@ -19,11 +20,12 @@ import { CycleForm } from "@/components/matching/CycleForm";
 import { CycleTable } from "@/components/matching/CycleTable";
 import { MetricCard } from "@/components/matching/MetricCard";
 import { PatientConnectionsTable } from "@/components/matching/PatientConnectionsTable";
+import { ProfessionalEditForm } from "@/components/matching/ProfessionalEditForm";
 import { ProfessionalStatusBadge } from "@/components/matching/StatusBadge";
 import { withBasePath } from "@/lib/basePath";
 import { formatDate, PROFESSIONAL_BACKGROUND_MAX_LENGTH } from "@/lib/matchingDomain";
 import { displayBrazilianPhone } from "@/lib/phone";
-import type { MatchingCycleView, ProfessionalDetail, ProfessionalOption } from "@/types/matching";
+import type { DistributionData, MatchingCycleView, ProfessionalDetail, ProfessionalOption } from "@/types/matching";
 
 type Tab = "OVERVIEW" | "CYCLES" | "CONNECTIONS" | "REPLACEMENTS" | "BACKGROUND";
 
@@ -56,6 +58,7 @@ export default function ProfessionalDetailPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("OVERVIEW");
   const [cycleModal, setCycleModal] = useState(false);
+  const [editModal, setEditModal] = useState(false);
   const [cancellingCycleId, setCancellingCycleId] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const query = useQuery({
@@ -64,6 +67,14 @@ export default function ProfessionalDetailPage() {
     enabled: Number.isInteger(professionalId) && professionalId > 0
   });
 
+  const areasQuery = useQuery({
+    queryKey: ["distribution"],
+    queryFn: async () => {
+      const response = await fetch(withBasePath("/api/admin/distribution"), { cache: "no-store" });
+      if (!response.ok) return null;
+      return await response.json() as DistributionData;
+    }
+  });
   const professional = query.data;
   const background = professional?.background?.slice(
     0, PROFESSIONAL_BACKGROUND_MAX_LENGTH
@@ -78,6 +89,15 @@ export default function ProfessionalDetailPage() {
         professional_register: professional.professional_register
       }
     : null;
+
+  async function professionalUpdated() {
+    setEditModal(false);
+    setNotice("Profissional atualizado com sucesso.");
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["professional", professionalId] }),
+      queryClient.invalidateQueries({ queryKey: ["distribution"] })
+    ]);
+  }
 
   async function cycleCreated() {
     setCycleModal(false);
@@ -120,6 +140,9 @@ export default function ProfessionalDetailPage() {
 
   const actions = professional ? (
     <>
+      <button type="button" onClick={() => setEditModal(true)} className="inline-flex items-center gap-2 rounded-lg border border-sage/25 bg-white px-3 py-2 text-sm font-semibold text-sage transition hover:bg-sage/5">
+        <Pencil className="h-4 w-4" aria-hidden />Editar cadastro
+      </button>
       <Link href={`/?personId=${professional.person_id}`} className="inline-flex items-center gap-2 rounded-lg border border-black/15 bg-white px-3 py-2 text-sm font-semibold text-ink/65 transition hover:bg-mist">
         <MessageSquareText className="h-4 w-4" aria-hidden />Abrir conversa
       </Link>
@@ -187,19 +210,17 @@ export default function ProfessionalDetailPage() {
                 <section className="rounded-xl border border-black/10 bg-white p-5 shadow-subtle">
                   <h3 className="font-semibold">Cadastro</h3>
                   <dl className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                    <Field label="Nome" value={professional.name} />
+                    <Field label="Área" value={professional.area} />
                     <Field label="Telefone" value={displayBrazilianPhone(professional.phone_number)} />
                     <Field label="E-mail" value={professional.email} />
-                    <Field label="CPF" value={professional.cpf} />
                     <Field label="Nascimento" value={professional.birth_date ? formatDate(professional.birth_date) : null} />
-                    <Field label="Abordagem" value={professional.approach} />
-                    <Field label="Gênero" value={professional.gender} />
-                    <Field label="Grupo minoritário" value={professional.minority_group} />
                     <Field label="Plataforma de vídeo" value={professional.video_platform} />
                   </dl>
                 </section>
                 <section className="space-y-3">
-                  <div className="flex items-center justify-between"><h3 className="font-semibold">Ciclos recentes</h3><button type="button" onClick={() => setTab("CYCLES")} className="text-sm font-semibold text-sage">Ver todos</button></div>
-                  <CycleTable cycles={professional.cycles.slice(0, 3)} onCancel={(cycle) => void cancelCycle(cycle)} cancellingId={cancellingCycleId} />
+                  <div className="flex items-center justify-between"><h3 className="font-semibold">Ciclos — mais novos primeiro</h3><button type="button" onClick={() => setTab("CYCLES")} className="text-sm font-semibold text-sage">Ver todos</button></div>
+                  <CycleTable cycles={professional.cycles} onCancel={(cycle) => void cancelCycle(cycle)} cancellingId={cancellingCycleId} />
                 </section>
               </div>
             ) : null}
@@ -233,6 +254,9 @@ export default function ProfessionalDetailPage() {
         ) : null}
       </div>
 
+      <Modal open={editModal} title="Editar profissional" description="Atualize os dados pessoais e profissionais." onClose={() => setEditModal(false)}>
+        {professional ? <ProfessionalEditForm professional={professional} knownAreas={areasQuery.data?.known_areas ?? [professional.area]} onCancel={() => setEditModal(false)} onSuccess={() => void professionalUpdated()} /> : null}
+      </Modal>
       <Modal open={cycleModal} title="Criar ciclo" description={professional ? `Novo compromisso para ${professional.name}.` : undefined} onClose={() => setCycleModal(false)}>
         <CycleForm professionals={option ? [option] : []} initialProfessionalId={professionalId} onCancel={() => setCycleModal(false)} onSuccess={() => void cycleCreated()} />
       </Modal>

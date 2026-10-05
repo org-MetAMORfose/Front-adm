@@ -25,6 +25,7 @@ export type ProfessionalDistributionItem = ProfessionalOption & {
   pending_patients: number;
   pending_replacements: number;
   next_deadline: string | null;
+  last_completed_at: string | null;
   has_overdue: boolean;
 };
 
@@ -105,25 +106,20 @@ export type CreateCyclePayload = {
 export type PatientRegistrationPayload = {
   name: string;
   phone_number: string;
-  birth_date: string;
+  birth_date?: string;
   area: string;
-  psychotherapy_approach?: string;
-  professional_profile?: string;
-  price_range?: string;
 };
 
 export type ProfessionalRegistrationPayload = {
   name: string;
   phone_number: string;
-  birth_date?: string;
-  cpf?: string;
+  email: string;
   area: string;
-  professional_register: string;
-  register_type: string;
-  approach?: string;
+  birth_date?: string;
   background?: string;
   video_platform?: string;
-  email?: string;
   gender?: string;
   minority_group?: string;
 };
+
+export type ProfessionalUpdatePayload = ProfessionalRegistrationPayload;

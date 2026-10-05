@@ -2,9 +2,10 @@ import "server-only";
 
 import { prisma } from "@/lib/db";
 import {
+  compareProfessionalsByPriority,
   getCycleStatus,
   getPendingPatients,
-  isActiveCycle
+  isActiveCycleWithPending
 } from "@/lib/matchingDomain";
 import type {
   DistributionData,
@@ -27,7 +28,10 @@ export async function getDistributionData(): Promise<DistributionData> {
         person: true,
         matching_cycle: {
           include: {
-            _count: { select: { matching_slot: true } }
+            matching_slot: {
+              select: { created_at: true },
+              orderBy: [{ created_at: "asc" }, { id: "asc" }]
+            }
           },
           orderBy: [{ deadline_at: "asc" }, { id: "asc" }]
         }
@@ -40,13 +44,6 @@ export async function getDistributionData(): Promise<DistributionData> {
     })
   ]);
 
-  const firstPatientRegistration = new Map<number, Date>();
-  for (const patient of patients) {
-    if (!firstPatientRegistration.has(patient.person_id)) {
-      firstPatientRegistration.set(patient.person_id, patient.created_at);
-    }
-  }
-
   let pendingConnections = 0;
   let dueNextSevenDays = 0;
   let overdueConnections = 0;
@@ -57,21 +54,17 @@ export async function getDistributionData(): Promise<DistributionData> {
     const validCycles = professional.matching_cycle.filter(
       (cycle) => cycle.cancelled_at === null
     );
-    const activeCycles = validCycles.filter((cycle) =>
-      isActiveCycle(cycle, now)
-    );
-
-    if (activeCycles.length > 0) activeAreas.add(professional.area);
-
     let promised = 0;
     let delivered = 0;
     let pending = 0;
     let replacements = 0;
     let hasOverdue = false;
+    let hasActiveCycle = false;
+    let lastCompletedAt: Date | null = null;
     const pendingDeadlines: Date[] = [];
 
     for (const cycle of validCycles) {
-      const cycleDelivered = cycle._count.matching_slot;
+      const cycleDelivered = cycle.matching_slot.length;
       const cyclePending = getPendingPatients(
         cycle.promised_patients,
         cycleDelivered
@@ -80,6 +73,17 @@ export async function getDistributionData(): Promise<DistributionData> {
       promised += cycle.promised_patients;
       delivered += cycleDelivered;
       pending += cyclePending;
+
+      if (isActiveCycleWithPending(cycle, cycle.promised_patients, cycleDelivered, now)) {
+        hasActiveCycle = true;
+      }
+
+      if (cyclePending === 0 && cycle.promised_patients > 0) {
+        const completedAt = cycle.matching_slot[cycle.promised_patients - 1]?.created_at;
+        if (completedAt && (!lastCompletedAt || completedAt > lastCompletedAt)) {
+          lastCompletedAt = completedAt;
+        }
+      }
 
       if (cyclePending > 0) {
         pendingConnections += cyclePending;
@@ -99,6 +103,7 @@ export async function getDistributionData(): Promise<DistributionData> {
       }
     }
 
+    if (hasActiveCycle) activeAreas.add(professional.area);
     const nextDeadline = pendingDeadlines.sort(
       (left, right) => left.getTime() - right.getTime()
     )[0];
@@ -110,7 +115,7 @@ export async function getDistributionData(): Promise<DistributionData> {
       phone_number: professional.person.phone_number,
       area: professional.area,
       professional_register: professional.professional_register,
-      is_active: activeCycles.length > 0,
+      is_active: hasActiveCycle,
       has_regular_cycle: validCycles.some((cycle) => cycle.type === "REGULAR"),
       has_replacement_cycle: validCycles.some(
         (cycle) => cycle.type === "REPLACEMENT"
@@ -120,6 +125,7 @@ export async function getDistributionData(): Promise<DistributionData> {
       pending_patients: pending,
       pending_replacements: replacements,
       next_deadline: nextDeadline?.toISOString() ?? null,
+      last_completed_at: lastCompletedAt?.toISOString() ?? null,
       has_overdue: hasOverdue
     };
   });
@@ -129,16 +135,16 @@ export async function getDistributionData(): Promise<DistributionData> {
       registered_professionals: professionals.length,
       active_professionals: professionalItems.filter((item) => item.is_active)
         .length,
-      registered_patients: firstPatientRegistration.size,
-      new_patients_last_7_days: [...firstPatientRegistration.values()].filter(
-        (createdAt) => createdAt >= sevenDaysAgo
+      registered_patients: patients.length,
+      new_patients_last_7_days: patients.filter(
+        (patient) => patient.created_at >= sevenDaysAgo
       ).length,
       pending_connections: pendingConnections,
       due_next_7_days: dueNextSevenDays,
       overdue_connections: overdueConnections,
       pending_replacements: pendingReplacements
     },
-    professionals: professionalItems,
+    professionals: professionalItems.sort(compareProfessionalsByPriority),
     active_areas: [...activeAreas].sort((left, right) =>
       left.localeCompare(right, "pt-BR")
     ),
@@ -164,7 +170,7 @@ export async function getProfessionalDetail(
             orderBy: [{ created_at: "desc" }, { id: "desc" }]
           }
         },
-        orderBy: [{ deadline_at: "desc" }, { id: "desc" }]
+        orderBy: [{ starts_at: "desc" }, { created_at: "desc" }, { id: "desc" }]
       }
     }
   });
@@ -228,6 +234,8 @@ export async function getProfessionalDetail(
       algorithm_version: slot.algorithm_version,
       created_at: slot.created_at.toISOString()
     }))
+  ).sort((left, right) =>
+    right.created_at.localeCompare(left.created_at) || right.id - left.id
   );
 
   const nextDeadline = pendingDeadlines.sort(
@@ -250,9 +258,7 @@ export async function getProfessionalDetail(
     gender: professional.gender,
     minority_group: professional.minority_group,
     created_at: professional.created_at.toISOString(),
-    is_active: professional.matching_cycle.some((cycle) =>
-      isActiveCycle(cycle, now)
-    ),
+    is_active: cycles.some((cycle) => cycle.status === "ACTIVE"),
     promised_patients: promised,
     delivered_patients: delivered,
     pending_patients: pending,
