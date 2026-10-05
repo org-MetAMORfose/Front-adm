@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
-import { invokeMatchingLambda } from "@/lib/matchingLambda";
+import { registerPatientsThroughChatbot } from "@/lib/chatbotRegistration";
 import { isValidPastDateOnly, normalizeSearch } from "@/lib/matchingDomain";
 import { isValidBrazilianMobile, normalizeBrazilianPhone } from "@/lib/phone";
 import type { PatientRegistrationPayload } from "@/types/matching";
@@ -15,14 +15,11 @@ function validatePatient(body: Record<string, unknown>, row: number) {
   const rawPhone = text(body, "phone_number");
   const birthDate = text(body, "birth_date");
   const area = text(body, "area");
-  const approach = text(body, "psychotherapy_approach");
-  const profile = text(body, "professional_profile") || "Sem preferência";
-  const priceRange = text(body, "price_range");
   const errors: string[] = [];
 
   if (name.length < 2) errors.push("nome inválido");
   if (!isValidBrazilianMobile(rawPhone)) errors.push("celular inválido");
-  if (!isValidPastDateOnly(birthDate)) errors.push("nascimento inválido");
+  if (birthDate && !isValidPastDateOnly(birthDate)) errors.push("nascimento inválido");
   if (!area) errors.push("área ausente");
 
   return {
@@ -33,11 +30,8 @@ function validatePatient(body: Record<string, unknown>, row: number) {
       phone_number: isValidBrazilianMobile(rawPhone)
         ? normalizeBrazilianPhone(rawPhone)
         : rawPhone,
-      birth_date: birthDate,
-      area,
-      ...(approach ? { psychotherapy_approach: approach } : {}),
-      professional_profile: profile,
-      ...(priceRange ? { price_range: priceRange } : {})
+      ...(birthDate ? { birth_date: birthDate } : {}),
+      area
     } satisfies PatientRegistrationPayload
   };
 }
@@ -89,22 +83,29 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
-  const availableAreas = await prisma.professional.findMany({
-    where: {
-      area: { in: validated.map((patient) => patient.payload.area) },
+  const availableProfessionals = await prisma.professional.findMany({
+    where: { area: { in: validated.map((patient) => patient.payload.area) } },
+    select: {
+      area: true,
       matching_cycle: {
-        some: {
+        where: {
           cancelled_at: null,
           starts_at: { lte: now },
           deadline_at: { gte: now }
+        },
+        select: {
+          promised_patients: true,
+          _count: { select: { matching_slot: true } }
         }
       }
-    },
-    select: { area: true },
-    distinct: ["area"]
+    }
   });
   const activeAreaKeys = new Set(
-    availableAreas.map((professional) => normalizeSearch(professional.area))
+    availableProfessionals
+      .filter((professional) => professional.matching_cycle.some(
+        (cycle) => cycle._count.matching_slot < cycle.promised_patients
+      ))
+      .map((professional) => normalizeSearch(professional.area))
   );
   const unavailableAreas = [...new Set(
     validated
@@ -120,17 +121,21 @@ export async function POST(request: Request) {
 
   try {
     const payloads = validated.map((patient) => patient.payload);
-    const lambda = await invokeMatchingLambda(
-      payloads.length === 1 ? payloads[0] : payloads
-    );
-    return NextResponse.json({ ok: true, count: payloads.length, lambda });
+    const chatbot = await registerPatientsThroughChatbot(payloads);
+    if (!chatbot.ok) {
+      return NextResponse.json(
+        { error: "O chatbot recusou o cadastro de pacientes.", chatbot_status: chatbot.status },
+        { status: 502 }
+      );
+    }
+    return NextResponse.json({ ok: true, count: payloads.length, chatbot: chatbot.body });
   } catch (error) {
     return NextResponse.json(
       {
         error:
           error instanceof Error
             ? error.message
-            : "Não foi possível enviar os pacientes para o matching."
+            : "Não foi possível cadastrar os pacientes."
       },
       { status: 503 }
     );

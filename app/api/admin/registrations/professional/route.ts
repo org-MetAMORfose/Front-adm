@@ -31,12 +31,8 @@ function parseProfessionalRegistration(
   const name = text(value, "name");
   const rawPhone = text(value, "phone_number");
   const birthDate = text(value, "birth_date");
-  const cpf = text(value, "cpf").replace(/\D/g, "");
   const area = text(value, "area");
-  const professionalRegister = text(value, "professional_register");
-  const registerType = text(value, "register_type");
   const email = text(value, "email");
-  const approach = text(value, "approach");
   const background = text(value, "background");
   const videoPlatform = text(value, "video_platform");
   const gender = text(value, "gender");
@@ -49,11 +45,8 @@ function parseProfessionalRegistration(
   if (birthDate && !isValidPastDateOnly(birthDate)) {
     return { ok: false, error: "Informe uma data de nascimento válida." };
   }
-  if (cpf && cpf.length !== 11) return { ok: false, error: "O CPF deve conter 11 dígitos." };
   if (!area) return { ok: false, error: "Informe a área de atuação." };
-  if (!professionalRegister) return { ok: false, error: "Informe o registro profissional." };
-  if (!registerType) return { ok: false, error: "Informe o tipo de registro." };
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: "Informe um e-mail válido." };
   }
   if (background.length > PROFESSIONAL_BACKGROUND_MAX_LENGTH) {
@@ -66,14 +59,10 @@ function parseProfessionalRegistration(
       name,
       phone_number: normalizeBrazilianPhone(rawPhone),
       ...(birthDate ? { birth_date: birthDate } : {}),
-      ...(cpf ? { cpf } : {}),
       area,
-      professional_register: professionalRegister,
-      register_type: registerType,
-      ...(approach ? { approach } : {}),
+      email,
       ...(background ? { background } : {}),
       ...(videoPlatform ? { video_platform: videoPlatform } : {}),
-      ...(email ? { email } : {}),
       ...(gender ? { gender } : {}),
       ...(minorityGroup ? { minority_group: minorityGroup } : {})
     }

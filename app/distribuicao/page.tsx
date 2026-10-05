@@ -24,7 +24,7 @@ import { ProfessionalForm } from "@/components/matching/ProfessionalForm";
 import { ProfessionalSummary } from "@/components/matching/ProfessionalSummary";
 import { ProfessionalTable } from "@/components/matching/ProfessionalTable";
 import { withBasePath } from "@/lib/basePath";
-import { normalizeSearch } from "@/lib/matchingDomain";
+import { compareProfessionalsByPriority, normalizeSearch } from "@/lib/matchingDomain";
 import type {
   DistributionData,
   ProfessionalDistributionItem
@@ -33,7 +33,7 @@ import type {
 type ModalName = "patient" | "professional" | "cycle" | null;
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "OVERDUE";
 type TypeFilter = "ALL" | "REGULAR" | "REPLACEMENT";
-type SortOption = "DEADLINE" | "NAME" | "PENDING";
+type SortOption = "PRIORITY" | "DEADLINE" | "NAME" | "PENDING";
 
 async function fetchDistribution() {
   const response = await fetch(withBasePath("/api/admin/distribution"), {
@@ -51,7 +51,7 @@ export default function DistributionPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [cycleType, setCycleType] = useState<TypeFilter>("ALL");
-  const [sort, setSort] = useState<SortOption>("DEADLINE");
+  const [sort, setSort] = useState<SortOption>("PRIORITY");
   const [notice, setNotice] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["distribution"],
@@ -78,6 +78,7 @@ export default function DistributionPage() {
         return matchesSearch && matchesStatus && matchesType;
       })
       .sort((left, right) => {
+        if (sort === "PRIORITY") return compareProfessionalsByPriority(left, right);
         if (sort === "NAME") return left.name.localeCompare(right.name, "pt-BR");
         if (sort === "PENDING") return right.pending_patients - left.pending_patients || left.name.localeCompare(right.name, "pt-BR");
         if (!left.next_deadline) return 1;
@@ -149,7 +150,7 @@ export default function DistributionPage() {
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
             <section aria-label="Indicadores de cadastros" className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard label="Profissionais cadastrados" value={query.data.metrics.registered_professionals} icon={Users} />
-              <MetricCard label="Profissionais ativos" value={query.data.metrics.active_professionals} note="Com ciclo vigente agora" icon={UserCheck} tone="positive" />
+              <MetricCard label="Profissionais ativos" value={query.data.metrics.active_professionals} note="Com saldo em ciclo vigente" icon={UserCheck} tone="positive" />
               <MetricCard label="Pacientes cadastrados" value={query.data.metrics.registered_patients} icon={Users} />
               <MetricCard label="Novos pacientes" value={query.data.metrics.new_patients_last_7_days} note="Últimos 7 dias corridos" icon={UserPlus} tone="positive" />
             </section>
@@ -177,7 +178,7 @@ export default function DistributionPage() {
                   <option value="ALL">Todos os tipos</option><option value="REGULAR">Regular</option><option value="REPLACEMENT">Reposição</option>
                 </select>
                 <select value={sort} onChange={(event) => setSort(event.target.value as SortOption)} className="rounded-lg border border-black/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-sage">
-                  <option value="DEADLINE">Prazo mais próximo</option><option value="PENDING">Maior saldo</option><option value="NAME">Nome</option>
+                  <option value="PRIORITY">Prioridade operacional</option><option value="DEADLINE">Prazo mais próximo</option><option value="PENDING">Maior saldo</option><option value="NAME">Nome</option>
                 </select>
               </div>
             </section>
@@ -196,10 +197,10 @@ export default function DistributionPage() {
         ) : null}
       </div>
 
-      <Modal open={modal === "patient"} title="Adicionar pacientes" description="Cadastre individualmente ou cole uma lista do Google Sheets." onClose={() => setModal(null)}>
-        <PatientForm activeAreas={query.data?.active_areas ?? []} onCancel={() => setModal(null)} onSuccess={() => void changed("Pacientes enviados para a Lambda de matching.")} />
+      <Modal open={modal === "patient"} title="Adicionar pacientes" description="Informe nome, celular, área e, se disponível, nascimento." onClose={() => setModal(null)}>
+        <PatientForm activeAreas={query.data?.active_areas ?? []} onCancel={() => setModal(null)} onSuccess={() => void changed("Paciente cadastrado e enviado para o matching.")} />
       </Modal>
-      <Modal open={modal === "professional"} title="Adicionar profissional" description="Dados pessoais e profissionais serão enviados ao chatbot." onClose={() => setModal(null)}>
+      <Modal open={modal === "professional"} title="Adicionar profissional" description="Cadastre os dados essenciais e informações opcionais do profissional." onClose={() => setModal(null)}>
         <ProfessionalForm knownAreas={query.data?.known_areas ?? []} onCancel={() => setModal(null)} onSuccess={() => void changed("Profissional encaminhado ao chatbot para cadastro.")} />
       </Modal>
       <Modal open={modal === "cycle"} title="Criar novo ciclo" description="Defina a quantidade e o prazo do compromisso." onClose={() => setModal(null)}>

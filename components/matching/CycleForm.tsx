@@ -58,7 +58,7 @@ export function CycleForm({
   const [type, setType] = useState<MatchingCycleType>("REGULAR");
   const [promisedPatients, setPromisedPatients] = useState("4");
   const [startsAt, setStartsAt] = useState(localDateTime(now));
-  const [durationDays, setDurationDays] = useState("7");
+  const [durationDays, setDurationDays] = useState("30");
   const deadlineAt = useMemo(
     () => calculateDeadline(startsAt, durationDays),
     [durationDays, startsAt]
