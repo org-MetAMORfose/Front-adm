@@ -28,14 +28,18 @@ import {
   FlowApiError,
   discardFlowRevision,
   getFlowRevision,
+  listFlowActions,
+  listFlowSheetTabs,
   publishFlowRevision,
   validateFlowRevision
 } from "@/lib/chatbotFlowClient";
 import {
   buttonLabelValidationErrors,
+  buttonCountValidationErrors,
   cloneGraph,
   conditionalActionConfig,
   deleteNodeWithConnections,
+  deleteTransitionWithActions,
   errorsForElement,
   insertNodeInTransition,
   nextDraftEntityId,
@@ -87,6 +91,17 @@ function LoadedFlowEditor({
   const queryClient = useQueryClient();
   const flow = useReactFlow<FlowCanvasNode, NormalCanvasEdge | ConditionalCanvasEdge>();
   const editor = useFlowEditorState({ initialGraph, revisionId, editable });
+  const actionCatalog = useQuery({
+    queryKey: ["chatbot-flow", "actions"],
+    queryFn: listFlowActions,
+    retry: false
+  });
+  const sheetTabs = useQuery({
+    queryKey: ["chatbot-flow", "sheets", "tabs"],
+    queryFn: listFlowSheetTabs,
+    retry: false,
+    staleTime: 5 * 60 * 1000
+  });
   const [selection, setSelection] = useState<FlowSelection>(null);
   const [validation, setValidation] = useState<FlowValidationResult | null>(null);
   const [validationStale, setValidationStale] = useState(false);
@@ -98,7 +113,13 @@ function LoadedFlowEditor({
   const dragStartGraphRef = useRef<FlowGraph | null>(null);
   const dragGhostRef = useRef<HTMLDivElement | null>(null);
   const protections = useMemo(() => protectedFlowEntities(editor.graph), [editor.graph]);
-  const localErrors = useMemo(() => buttonLabelValidationErrors(editor.graph), [editor.graph]);
+  const localErrors = useMemo(
+    () => [
+      ...buttonLabelValidationErrors(editor.graph),
+      ...buttonCountValidationErrors(editor.graph)
+    ],
+    [editor.graph]
+  );
   const displayedErrors = useMemo(() => {
     const combined = [...(validation?.errors ?? []), ...localErrors];
     return combined.filter((error, index) => combined.findIndex((candidate) =>
@@ -160,7 +181,7 @@ function LoadedFlowEditor({
       selected: selection?.kind === "node" && selection.id === node.id,
       data: {
         node,
-        protected: protections.requiredNodes.has(node.id) || protections.dependencyNodes.has(node.id),
+        protected: protections.dependencyNodes.has(node.id),
         errorCount: errorsForElement(displayedErrors, "node", node.id, node.key).length,
         actionCount: actionCounts.get(node.id) ?? 0
       }
@@ -335,13 +356,13 @@ function LoadedFlowEditor({
   }, [commit, editor.graphRef]);
 
   const deleteTransition = useCallback((transitionId: number) => {
-    const graph = editor.graphRef.current;
-    if (graph.transition_actions.some((item) => item.transition_id === transitionId)) {
-      setNotice("Esta transição possui actions somente leitura e não pode ser apagada.");
-      return;
+    try {
+      const next = deleteTransitionWithActions(editor.graphRef.current, transitionId);
+      commit(next, "Apagar transição");
+      setSelection(null);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Esta transição não pode ser apagada.");
     }
-    commit({ ...graph, transitions: graph.transitions.filter((item) => item.id !== transitionId) }, "Apagar transição");
-    setSelection(null);
   }, [commit, editor.graphRef]);
 
   const validate = useCallback(async () => {
@@ -445,7 +466,24 @@ function LoadedFlowEditor({
       <AdminHeader title="Fluxo do chatbot" description={`Revisão ${revision.id}${revision.version ? ` · versão ${revision.version}` : " · draft"}`} actions={actions} />
       {notice || editor.saveError ? <div className="flex shrink-0 items-center justify-between border-b border-coral/20 bg-coral/10 px-5 py-2 text-sm text-coral"><span>{notice || editor.saveError}</span><div className="flex items-center gap-2">{editor.saveStatus === "error" ? <button type="button" onClick={() => void editor.flush()} className="font-semibold underline">Tentar salvar</button> : null}{retryPublish ? <button type="button" onClick={() => void retryCachePublish()} className="font-semibold underline">Repetir publicação do cache</button> : null}<button type="button" onClick={() => setNotice(null)} className="font-semibold">Fechar</button></div></div> : null}
       <div className="flex min-h-0 flex-1">
-        <FlowConfigPanel graph={editor.graph} selection={selection} editable={editable} errors={displayedErrors} onCommit={commit} onSelect={setSelection} onInsertNode={insertNode} onDeleteNode={deleteNode} onDeleteTransition={deleteTransition} />
+        <FlowConfigPanel
+          graph={editor.graph}
+          selection={selection}
+          editable={editable}
+          errors={displayedErrors}
+          actionDefinitions={actionCatalog.data?.actions ?? []}
+          sheetTabs={sheetTabs.data?.tabs ?? []}
+          sheetTabsReady={sheetTabs.isSuccess}
+          sheetTabsLoading={sheetTabs.isLoading}
+          sheetTabsLoadError={sheetTabs.error instanceof Error ? sheetTabs.error.message : null}
+          actionsLoading={actionCatalog.isLoading}
+          actionsLoadError={actionCatalog.error instanceof Error ? actionCatalog.error.message : null}
+          onCommit={commit}
+          onSelect={setSelection}
+          onInsertNode={insertNode}
+          onDeleteNode={deleteNode}
+          onDeleteTransition={deleteTransition}
+        />
         <section ref={canvasRef} className="relative min-w-0 flex-1">
           <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-black/10 bg-white/95 p-2 shadow-subtle backdrop-blur">
             {editable ? <button type="button" onClick={createNode} className="inline-flex items-center gap-2 rounded-lg bg-sage px-3 py-2 text-xs font-semibold text-white"><Plus className="h-4 w-4" />Novo nó</button> : null}

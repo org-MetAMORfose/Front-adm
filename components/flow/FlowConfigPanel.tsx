@@ -1,9 +1,11 @@
 "use client";
 
 import { ButtonComposer } from "@/components/flow/ButtonComposer";
+import { ActionComposer } from "@/components/flow/ActionComposer";
 import { TypeComposer } from "@/components/flow/TypeComposer";
 
 import { ArrowRight, Braces, LockKeyhole, MessageSquareWarning, Plus, Trash2 } from "lucide-react";
+import React from "react";
 
 import {
   BUTTON_LABEL_MAX_LENGTH,
@@ -18,8 +20,10 @@ import {
 } from "@/lib/chatbotFlowDomain";
 import type {
   FlowGraph,
+  FlowActionDefinition,
   FlowInputType,
   FlowSelection,
+  FlowSheetTab,
   FlowValidationError
 } from "@/types/chatbotFlow";
 import { FLOW_INPUT_TYPES } from "@/types/chatbotFlow";
@@ -29,6 +33,13 @@ type Props = {
   selection: FlowSelection;
   editable: boolean;
   errors: FlowValidationError[];
+  actionDefinitions: FlowActionDefinition[];
+  sheetTabs?: FlowSheetTab[];
+  sheetTabsReady?: boolean;
+  sheetTabsLoading?: boolean;
+  sheetTabsLoadError?: string | null;
+  actionsLoading?: boolean;
+  actionsLoadError?: string | null;
   onCommit: (graph: FlowGraph, label: string, mergeKey?: string) => void;
   onSelect: (selection: FlowSelection) => void;
   onInsertNode: (transitionId: number) => void;
@@ -57,6 +68,13 @@ export function FlowConfigPanel({
   selection,
   editable,
   errors,
+  actionDefinitions,
+  sheetTabs = [],
+  sheetTabsReady = false,
+  sheetTabsLoading = false,
+  sheetTabsLoadError = null,
+  actionsLoading = false,
+  actionsLoadError = null,
   onCommit,
   onSelect,
   onInsertNode,
@@ -118,9 +136,6 @@ export function FlowConfigPanel({
     const buttonGroups = [...buttonGroupsByAction.values()].map((items) =>
       [...items].sort((left, right) => left.position - right.position || left.id - right.id)
     );
-    const hasNoActionButtonGroup = buttonGroups.some((group) =>
-      transitionActionSignature(graph, group[0].id) === "__sem_action__"
-    );
     const nonButtonTransitions = outgoing.filter((item) => item.button_label === null && item.expected_value === null);
     const inputGroupsByRoute = new Map<string, typeof nonButtonTransitions>();
     for (const transition of nonButtonTransitions) {
@@ -130,12 +145,9 @@ export function FlowConfigPanel({
     const inputGroups = [...inputGroupsByRoute.values()].map((items) =>
       [...items].sort((left, right) => left.position - right.position || left.id - right.id)
     ).sort((left, right) => left[0].position - right[0].position);
-    const hasNoActionInputGroup = inputGroups.some((group) =>
-      transitionActionSignature(graph, group[0].id) === "__sem_action__"
-    );
     const nodeActions = graph.transition_actions.filter((action) => outgoing.some((transition) => transition.id === action.transition_id));
     const nodeErrors = errors.filter((error) => error.node_id === node.id || error.node_key === node.key);
-    const locked = protections.requiredNodes.has(node.id) || protections.dependencyNodes.has(node.id);
+    const locked = protections.dependencyNodes.has(node.id);
     const update = (patch: Partial<typeof node>, label: string, key: string) => {
       onCommit({ ...graph, nodes: graph.nodes.map((item) => item.id === node.id ? { ...item, ...patch } : item) }, label, `node-${node.id}-${key}`);
     };
@@ -151,6 +163,16 @@ export function FlowConfigPanel({
           <Field label="Tipo"><select value={node.type} disabled={!editable} onChange={(event) => update({ type: event.target.value as typeof node.type }, "Alterar tipo", "type")} className={fieldClass}><option value="START">START</option><option value="MESSAGE">MESSAGE</option><option value="END">END</option></select></Field>
           <Field label="Mensagem"><textarea value={node.message} disabled={!editable} rows={5} onChange={(event) => update({ message: event.target.value }, "Editar mensagem", "message")} className={fieldClass} /></Field>
           <Field label="Descrição"><textarea value={node.description ?? ""} disabled={!editable} rows={3} onChange={(event) => update({ description: event.target.value || null }, "Editar descrição", "description")} className={fieldClass} /></Field>
+
+          {node.type !== "END" ? (
+            <section>
+              <p className="text-xs font-bold uppercase tracking-wide text-ink/45">Adicionar sem action</p>
+              <div className="mt-2 space-y-2">
+                <ButtonComposer graph={graph} sourceNodeId={node.id} editable={editable} onCommit={onCommit} onSelect={onSelect} />
+                <TypeComposer graph={graph} sourceNodeId={node.id} editable={editable} onCommit={onCommit} onSelect={onSelect} />
+              </div>
+            </section>
+          ) : null}
 
           <section>
             <div className="flex items-center justify-between gap-2">
@@ -175,7 +197,6 @@ export function FlowConfigPanel({
                   </div>
                 );
               })}
-              {node.type !== "END" && !hasNoActionInputGroup ? <TypeComposer graph={graph} sourceNodeId={node.id} editable={editable} onCommit={onCommit} onSelect={onSelect} /> : null}
               {!inputGroups.length ? <p className="text-xs text-ink/45">Nenhum tipo de entrada separado.</p> : null}
             </div>
           </section>
@@ -191,7 +212,7 @@ export function FlowConfigPanel({
                   <div key={signature} className="overflow-hidden rounded-xl border border-sage/20 bg-sage/5">
                     <button type="button" onClick={() => onSelect({ kind: "transition", id: representative.id })} className="block w-full px-3 py-2.5 text-left hover:bg-sage/5">
                       <span className="flex items-center justify-between gap-2 text-xs font-bold text-sage">
-                        <span>{group.length} botão{group.length === 1 ? "" : "ões"}</span>
+                        <span>{group.length} {group.length === 1 ? "botão" : "botões"}</span>
                         <span className="max-w-[190px] truncate font-mono text-[10px] font-medium text-[#365c82]">{groupActions.length ? groupActions.map((action) => action.action_key).join(" + ") : "sem action"}</span>
                       </span>
                       <span className="mt-2 block space-y-1">
@@ -207,16 +228,15 @@ export function FlowConfigPanel({
                   </div>
                 );
               })}
-              {node.type !== "END" && !hasNoActionButtonGroup ? <ButtonComposer graph={graph} sourceNodeId={node.id} editable={editable} onCommit={onCommit} onSelect={onSelect} /> : null}
               {!buttonGroups.length && !editable ? <p className="text-xs text-ink/45">Nenhum botão.</p> : null}
             </div>
           </section>
 
           {!outgoing.length ? <p className="rounded-lg bg-mist p-3 text-xs text-ink/45">Este nó ainda não possui saídas.</p> : null}
 
-          {nodeActions.length ? <section><p className="text-xs font-bold uppercase tracking-wide text-ink/45">Actions somente leitura</p><div className="mt-2 space-y-2">{nodeActions.map((action) => <button key={action.id} type="button" onClick={() => onSelect({ kind: "action", id: action.id })} className="flex w-full items-center justify-between rounded-lg border border-black/10 px-3 py-2 text-left text-xs hover:border-[#4776a6]/40"><span className="truncate font-mono">{action.action_key}</span>{action.is_required ? <LockKeyhole className="h-3.5 w-3.5 text-coral" /> : <Braces className="h-3.5 w-3.5 text-[#4776a6]" />}</button>)}</div></section> : null}
+          {nodeActions.length ? <section><p className="text-xs font-bold uppercase tracking-wide text-ink/45">Actions do nó</p><div className="mt-2 space-y-2">{nodeActions.map((action) => <button key={action.id} type="button" onClick={() => onSelect({ kind: "action", id: action.id })} className="flex w-full items-center justify-between rounded-lg border border-black/10 px-3 py-2 text-left text-xs hover:border-[#4776a6]/40"><span className="truncate font-mono">{action.action_key}</span>{protections.dependencyActions.has(action.id) ? <LockKeyhole className="h-3.5 w-3.5 text-coral" /> : <Braces className="h-3.5 w-3.5 text-[#4776a6]" />}</button>)}</div></section> : null}
 
-          {editable ? <button type="button" disabled={locked || nodeActions.length > 0} onClick={() => onDeleteNode(node.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-coral/30 px-3 py-2 text-sm font-semibold text-coral transition hover:bg-coral/10 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 className="h-4 w-4" />Apagar nó</button> : null}
+          {editable ? <button type="button" disabled={locked} onClick={() => onDeleteNode(node.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-coral/30 px-3 py-2 text-sm font-semibold text-coral transition hover:bg-coral/10 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 className="h-4 w-4" />Apagar nó</button> : null}
         </div>
       </aside>
     );
@@ -273,7 +293,7 @@ export function FlowConfigPanel({
           <p className="font-semibold">{isButtonGroup ? "Grupo de botões" : isInputGroup ? "Tipos aceitos" : "Transição normal"}</p>
           <p className="text-xs text-ink/45">
             {isButtonGroup
-              ? `${buttonGroup.length} botão${buttonGroup.length === 1 ? "" : "ões"} · mesma configuração de actions`
+              ? `${buttonGroup.length} ${buttonGroup.length === 1 ? "botão" : "botões"} · mesma configuração de actions`
               : isInputGroup
                 ? `${[...new Set(inputGroup.map((item) => item.input_type))].join(" ou ")} · mesmo destino e actions`
                 : `Seta verde · ID ${transition.id}`}
@@ -281,21 +301,21 @@ export function FlowConfigPanel({
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <ErrorList errors={transitionErrors} />
-          {actions.length ? (
-            <section className="rounded-xl border border-[#4776a6]/20 bg-[#4776a6]/5 p-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#365c82]">
-                <LockKeyhole className="h-3.5 w-3.5" />Actions fixas do grupo
-              </div>
-              <div className="mt-2 space-y-1.5">
-                {actions.map((action) => (
-                  <button key={action.id} type="button" onClick={() => onSelect({ kind: "action", id: action.id })} className="flex w-full items-center justify-between rounded-lg border border-[#4776a6]/15 bg-white px-3 py-2 text-left text-xs hover:border-[#4776a6]/40">
-                    <span className="truncate font-mono">{action.action_key}</span>
-                    {action.is_required ? <LockKeyhole className="h-3.5 w-3.5 text-coral" /> : <Braces className="h-3.5 w-3.5 text-[#4776a6]" />}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ) : null}
+          <ActionComposer
+            key={`${activeGroup.map((item) => item.id).join(",")}:${transitionActionSignature(graph, transition.id)}`}
+            graph={graph}
+            transitions={activeGroup}
+            definitions={actionDefinitions}
+            sheetTabs={sheetTabs}
+            sheetTabsReady={sheetTabsReady}
+            sheetTabsLoading={sheetTabsLoading}
+            sheetTabsLoadError={sheetTabsLoadError}
+            loading={actionsLoading}
+            loadError={actionsLoadError}
+            editable={editable}
+            onCommit={onCommit}
+            onSelect={onSelect}
+          />
 
           {isButtonGroup ? (
             <section className="space-y-3">
@@ -306,9 +326,12 @@ export function FlowConfigPanel({
                   <div key={buttonTransition.id} className={`rounded-xl border p-3 ${buttonTransition.id === transition.id ? "border-amber-400 bg-amber-50/50" : "border-black/10"}`}>
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <span className="text-xs font-bold text-ink/55">BOTÃO {index + 1}</span>
-                      <span className="flex min-w-0 items-center gap-1 text-[11px] text-ink/45">
-                        <ArrowRight className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{destination?.title ?? "Destino ausente"}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="flex min-w-0 items-center gap-1 text-[11px] text-ink/45">
+                          <ArrowRight className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{destination?.title ?? "Destino ausente"}</span>
+                        </span>
+                        {editable ? <button type="button" onClick={() => onDeleteTransition(buttonTransition.id)} className="rounded p-1 text-coral hover:bg-coral/10" aria-label={`Apagar botão ${buttonTransition.button_label ?? index + 1}`}><Trash2 className="h-3.5 w-3.5" /></button> : null}
                       </span>
                     </div>
                     <Field label="Nome do botão">
@@ -381,7 +404,7 @@ export function FlowConfigPanel({
               {transition.input_type !== "AUTO" ? <ButtonComposer graph={graph} sourceNodeId={transition.node_id} templateTransitionId={actions.length ? transition.id : null} editable={editable} onCommit={onCommit} onSelect={onSelect} /> : null}
             </>
           )}
-          {editable ? <div className="space-y-2"><button type="button" onClick={() => onInsertNode(transition.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sage px-3 py-2 text-sm font-semibold text-white hover:bg-sage/90"><Plus className="h-4 w-4" />Inserir nó nesta transição</button><p className="text-xs text-ink/45">Mantém esta transição e suas actions no nó de origem; o novo nó continua automaticamente para o destino atual.</p><button type="button" disabled={actions.length > 0} onClick={() => onDeleteTransition(transition.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-coral/30 px-3 py-2 text-sm font-semibold text-coral hover:bg-coral/10 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 className="h-4 w-4" />Apagar transição</button></div> : null}
+          {editable ? <div className="space-y-2"><button type="button" onClick={() => onInsertNode(transition.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sage px-3 py-2 text-sm font-semibold text-white hover:bg-sage/90"><Plus className="h-4 w-4" />Inserir nó nesta transição</button><p className="text-xs text-ink/45">Mantém esta transição e suas actions no nó de origem; o novo nó continua automaticamente para o destino atual.</p>{!isButtonGroup ? <button type="button" onClick={() => onDeleteTransition(transition.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-coral/30 px-3 py-2 text-sm font-semibold text-coral hover:bg-coral/10"><Trash2 className="h-4 w-4" />Apagar transição</button> : null}</div> : null}
         </div>
       </aside>
     );
@@ -390,16 +413,17 @@ export function FlowConfigPanel({
   const action = graph.transition_actions.find((item) => item.id === selection.id);
   if (!action) return null;
   const config = conditionalActionConfig(action);
+  const managedDefinition = actionDefinitions.find((definition) => definition.key === action.action_key);
   const actionTransition = graph.transitions.find((item) => item.id === action.transition_id);
   const dependencies = graph.action_dependencies.filter((item) => item.action_id === action.id || item.depends_on_id === action.id);
   const actionErrors = errors.filter((error) => error.action_id === action.id);
   return (
     <aside className="flex h-full w-[370px] shrink-0 flex-col border-r border-black/10 bg-white">
-      <div className="border-b border-black/10 p-4"><div className="flex items-center gap-2"><span className="h-3.5 w-3.5 rotate-45 bg-[#4776a6]" /><p className="font-semibold">Transição de action</p></div><p className="mt-1 text-xs text-ink/45">Losango azul · somente leitura</p></div>
+      <div className="border-b border-black/10 p-4"><div className="flex items-center gap-2"><span className={config ? "h-3.5 w-3.5 rotate-45 bg-[#4776a6]" : "h-3.5 w-3.5 rounded bg-amber-500"} /><p className="font-semibold">{config ? "Transição de action" : managedDefinition?.label ?? "Action"}</p></div><p className="mt-1 text-xs text-ink/45">{config ? "Losango azul · somente leitura" : managedDefinition ? "Configurável no grupo da transição" : "Action interna · somente leitura"}</p></div>
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         <ErrorList errors={actionErrors} />
         <div className="rounded-lg bg-mist p-3"><p className="text-xs font-semibold text-ink/45">ACTION KEY</p><p className="mt-1 break-all font-mono text-sm">{action.action_key}</p><p className="mt-2 text-xs">{action.is_required ? "Obrigatória" : "Opcional"}</p></div>
-        {config ? <div className="space-y-3 rounded-xl border border-[#4776a6]/25 bg-[#4776a6]/5 p-3"><p className="text-xs font-bold uppercase tracking-wide text-[#365c82]">Condição de desvio</p><div><p className="text-xs text-ink/45">Campo do resultado</p><p className="font-mono text-sm">{config.source.field}</p></div><div className="grid grid-cols-2 gap-3"><div><p className="text-xs text-ink/45">Operador</p><p className="font-mono text-sm">{config.operator}</p></div><div><p className="text-xs text-ink/45">Valor</p><p className="break-all font-mono text-sm">{JSON.stringify(config.value)}</p></div></div><div><p className="text-xs text-ink/45">Destino</p><p className="break-all font-mono text-sm">{config.target_node_key}</p></div><p className="border-t border-[#4776a6]/15 pt-3 text-xs text-[#365c82]">Essa aresta não aceita “Inserir nó”. Ela será programável numa etapa futura.</p></div> : <div className="rounded-lg border border-black/10 p-3 text-xs text-ink/55">Esta action não declara uma transição condicional no config.</div>}
+        {config ? <div className="space-y-3 rounded-xl border border-[#4776a6]/25 bg-[#4776a6]/5 p-3"><p className="text-xs font-bold uppercase tracking-wide text-[#365c82]">Condição de desvio</p><div><p className="text-xs text-ink/45">Campo do resultado</p><p className="font-mono text-sm">{config.source.field}</p></div><div className="grid grid-cols-2 gap-3"><div><p className="text-xs text-ink/45">Operador</p><p className="font-mono text-sm">{config.operator}</p></div><div><p className="text-xs text-ink/45">Valor</p><p className="break-all font-mono text-sm">{JSON.stringify(config.value)}</p></div></div><div><p className="text-xs text-ink/45">Destino</p><p className="break-all font-mono text-sm">{config.target_node_key}</p></div><p className="border-t border-[#4776a6]/15 pt-3 text-xs text-[#365c82]">Essa aresta não aceita “Inserir nó”. Ela será programável numa etapa futura.</p></div> : managedDefinition ? <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/50 p-3">{managedDefinition.parameters.map((parameter) => <div key={parameter.key}><p className="text-xs text-ink/45">{parameter.label}</p><p className="break-all font-mono text-sm">{String(action.config?.[parameter.key] ?? "")}</p></div>)}<button type="button" onClick={() => actionTransition && onSelect({ kind: "transition", id: actionTransition.id })} className="mt-1 text-xs font-semibold text-sage hover:underline">Abrir grupo para editar</button></div> : <div className="rounded-lg border border-black/10 p-3 text-xs text-ink/55">Esta action não declara uma transição condicional no config.</div>}
         {dependencies.length ? <div><p className="text-xs font-bold uppercase tracking-wide text-ink/45">Dependências fixas</p>{dependencies.map((dependency) => <p key={dependency.id} className="mt-2 rounded-lg border border-black/10 p-2 font-mono text-xs">{dependency.depends_on_id} → {dependency.action_id}</p>)}</div> : null}
         {actionTransition ? <div className="space-y-2"><TypeComposer graph={graph} sourceNodeId={actionTransition.node_id} templateTransitionId={actionTransition.id} editable={editable} onCommit={onCommit} onSelect={onSelect} /><ButtonComposer graph={graph} sourceNodeId={actionTransition.node_id} templateTransitionId={actionTransition.id} editable={editable} onCommit={onCommit} onSelect={onSelect} /></div> : null}
       </div>

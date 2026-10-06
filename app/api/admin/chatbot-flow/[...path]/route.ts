@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 type RouteContext = { params: Promise<{ path: string[] }> };
 
 const allowedRoutes: Array<{ method: string; pattern: RegExp }> = [
+  { method: "GET", pattern: /^actions$/ },
+  { method: "GET", pattern: /^sheets\/tabs$/ },
   { method: "GET", pattern: /^revisions$/ },
   { method: "POST", pattern: /^revisions$/ },
   { method: "GET", pattern: /^revisions\/\d+$/ },
