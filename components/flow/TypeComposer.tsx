@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import { addInputTypeToFlow, groupedInputTransitions } from "@/lib/chatbotFlowDomain";
 import { FLOW_INPUT_TYPES, type FlowGraph, type FlowInputType, type FlowSelection } from "@/types/chatbotFlow";

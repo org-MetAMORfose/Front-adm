@@ -19,6 +19,7 @@ const collectionByEntity: Record<FlowEntityType, keyof FlowGraph> = {
 };
 
 export const BUTTON_LABEL_MAX_LENGTH = 20;
+export const BUTTONS_PER_NODE_MAX = 10;
 
 const fieldsByEntity: Record<FlowEntityType, readonly string[]> = {
   NODE: ["key", "type", "title", "description", "message", "position", "position_x", "position_y"],
@@ -164,20 +165,18 @@ export function protectedFlowEntities(graph: FlowGraph) {
   const dependencyActions = new Set(
     graph.action_dependencies.flatMap((item) => [item.action_id, item.depends_on_id])
   );
-  const requiredNodes = new Set<number>();
   const dependencyTransitions = new Set<number>();
   const dependencyNodes = new Set<number>();
 
   for (const action of graph.transition_actions) {
     const transition = transitionById.get(action.transition_id);
     if (!transition) continue;
-    if (action.is_required) requiredNodes.add(transition.node_id);
     if (dependencyActions.has(action.id)) {
       dependencyTransitions.add(transition.id);
       dependencyNodes.add(transition.node_id);
     }
   }
-  return { requiredNodes, dependencyActions, dependencyTransitions, dependencyNodes };
+  return { dependencyActions, dependencyTransitions, dependencyNodes };
 }
 
 export function insertNodeInTransition(
@@ -227,26 +226,49 @@ export function insertNodeInTransition(
 }
 
 export function deleteNodeWithConnections(graph: FlowGraph, nodeId: number): FlowGraph {
-  const protections = protectedFlowEntities(graph);
-  if (protections.requiredNodes.has(nodeId)) {
-    throw new Error("Este nó possui uma action obrigatória e não pode ser apagado.");
-  }
-  if (protections.dependencyNodes.has(nodeId)) {
-    throw new Error("Este nó contém uma action usada por uma dependência fixa.");
-  }
   const transitionIds = new Set(
     graph.transitions
       .filter((item) => item.node_id === nodeId || item.next_node_id === nodeId)
       .map((item) => item.id)
   );
-  const nestedActions = graph.transition_actions.filter((item) => transitionIds.has(item.transition_id));
-  if (nestedActions.length > 0) {
-    throw new Error("Este nó possui actions relacionadas, que são somente leitura nesta versão.");
+  const actionIds = new Set(
+    graph.transition_actions
+      .filter((item) => transitionIds.has(item.transition_id))
+      .map((item) => item.id)
+  );
+  const dependencyActionIds = new Set(
+    graph.action_dependencies.flatMap((dependency) => [dependency.action_id, dependency.depends_on_id])
+  );
+  if ([...actionIds].some((actionId) => dependencyActionIds.has(actionId))) {
+    throw new Error("Este nó contém uma action usada por uma dependência fixa.");
   }
   return {
     ...graph,
     nodes: graph.nodes.filter((item) => item.id !== nodeId),
-    transitions: graph.transitions.filter((item) => !transitionIds.has(item.id))
+    transitions: graph.transitions.filter((item) => !transitionIds.has(item.id)),
+    transition_actions: graph.transition_actions.filter((item) => !actionIds.has(item.id))
+  };
+}
+
+export function deleteTransitionWithActions(graph: FlowGraph, transitionId: number): FlowGraph {
+  if (!graph.transitions.some((transition) => transition.id === transitionId)) {
+    throw new Error("Transição não encontrada.");
+  }
+  const actionIds = new Set(
+    graph.transition_actions
+      .filter((action) => action.transition_id === transitionId)
+      .map((action) => action.id)
+  );
+  const dependencyActionIds = new Set(
+    graph.action_dependencies.flatMap((dependency) => [dependency.action_id, dependency.depends_on_id])
+  );
+  if ([...actionIds].some((actionId) => dependencyActionIds.has(actionId))) {
+    throw new Error("Esta transição contém uma action usada por uma dependência fixa.");
+  }
+  return {
+    ...graph,
+    transitions: graph.transitions.filter((transition) => transition.id !== transitionId),
+    transition_actions: graph.transition_actions.filter((action) => !actionIds.has(action.id))
   };
 }
 
@@ -303,6 +325,12 @@ export function addButtonToFlow(
   const source = graph.nodes.find((node) => node.id === options.sourceNodeId);
   if (!source) throw new Error("Nó de origem não encontrado.");
   if (source.type === "END") throw new Error("Um nó END não pode possuir botões.");
+  const buttonCount = graph.transitions.filter(
+    (transition) => transition.node_id === source.id && transition.button_label !== null
+  ).length;
+  if (buttonCount >= BUTTONS_PER_NODE_MAX) {
+    throw new Error(`Um nó pode possuir no máximo ${BUTTONS_PER_NODE_MAX} botões.`);
+  }
 
   const label = limitButtonLabel(options.label.trim());
   if (!label) throw new Error("Informe o nome do botão.");
@@ -468,12 +496,119 @@ export function addInputTypeToFlow(
     }
   };
 }
+function stableValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, stableValue(item)])
+    );
+  }
+  return value;
+}
+
+function actionSignatureValue(action: Pick<FlowTransitionAction, "action_key" | "config" | "is_required">) {
+  return `${action.action_key}:${action.is_required ? "required" : "optional"}:${JSON.stringify(stableValue(action.config))}`;
+}
+
 export function transitionActionSignature(graph: FlowGraph, transitionId: number) {
   const actions = graph.transition_actions.filter((action) => action.transition_id === transitionId);
   if (!actions.length) return "__sem_action__";
-  return actions
-    .map((action) => `${action.action_key}:${action.is_required ? "required" : "optional"}:${JSON.stringify(action.config === null ? null : action.config)}`)
-    .join("|");
+  return actions.map(actionSignatureValue).join("|");
+}
+
+export type ManagedActionInput = {
+  action_key: string;
+  config: Record<string, unknown>;
+  is_required: boolean;
+};
+
+export function addActionsToTransitions(
+  graph: FlowGraph,
+  transitionIds: number[],
+  input: ManagedActionInput
+): FlowGraph {
+  const selected = new Set(transitionIds);
+  if (!selected.size) throw new Error("Selecione ao menos uma transição.");
+  if ([...selected].some((id) => !graph.transitions.some((transition) => transition.id === id))) {
+    throw new Error("Uma das transições selecionadas não existe.");
+  }
+  for (const transitionId of selected) {
+    const duplicate = graph.transition_actions.some(
+      (action) =>
+        action.transition_id === transitionId &&
+        actionSignatureValue(action) === actionSignatureValue(input)
+    );
+    if (duplicate) throw new Error("Esta action já existe em uma das transições selecionadas.");
+  }
+  let draftId = nextDraftEntityId(graph);
+  const additions: FlowTransitionAction[] = [...selected].map((transitionId) => ({
+    id: draftId--,
+    transition_id: transitionId,
+    action_key: input.action_key,
+    config: structuredClone(input.config),
+    is_required: input.is_required
+  }));
+  return { ...graph, transition_actions: [...graph.transition_actions, ...additions] };
+}
+
+function correspondingGroupActions(
+  graph: FlowGraph,
+  sourceActionId: number,
+  transitionIds: number[]
+) {
+  const source = graph.transition_actions.find((action) => action.id === sourceActionId);
+  if (!source) throw new Error("Action não encontrada.");
+  const sourceActions = graph.transition_actions.filter((action) => action.transition_id === source.transition_id);
+  const index = sourceActions.findIndex((action) => action.id === source.id);
+  if (index < 0) throw new Error("Action não encontrada no grupo.");
+  return transitionIds.map((transitionId) => {
+    const candidate = graph.transition_actions.filter((action) => action.transition_id === transitionId)[index];
+    if (!candidate || candidate.action_key !== source.action_key) {
+      throw new Error("As actions selecionadas não pertencem ao mesmo grupo.");
+    }
+    return candidate;
+  });
+}
+
+export function updateActionAcrossTransitions(
+  graph: FlowGraph,
+  sourceActionId: number,
+  transitionIds: number[],
+  input: ManagedActionInput
+): FlowGraph {
+  if (!transitionIds.length) throw new Error("Selecione ao menos uma transição.");
+  const targets = new Set(correspondingGroupActions(graph, sourceActionId, transitionIds).map((action) => action.id));
+  return {
+    ...graph,
+    transition_actions: graph.transition_actions.map((action) => targets.has(action.id)
+      ? {
+          ...action,
+          action_key: input.action_key,
+          config: structuredClone(input.config),
+          is_required: input.is_required
+        }
+      : action)
+  };
+}
+
+export function deleteActionAcrossTransitions(
+  graph: FlowGraph,
+  sourceActionId: number,
+  transitionIds: number[]
+): FlowGraph {
+  if (!transitionIds.length) throw new Error("Selecione ao menos uma transição.");
+  const targets = correspondingGroupActions(graph, sourceActionId, transitionIds);
+  const protectedIds = new Set(graph.action_dependencies.flatMap((dependency) => [dependency.action_id, dependency.depends_on_id]));
+  if (targets.some((action) => protectedIds.has(action.id))) {
+    throw new Error("Uma action usada por dependência fixa não pode ser removida.");
+  }
+  const targetIds = new Set(targets.map((action) => action.id));
+  return {
+    ...graph,
+    transition_actions: graph.transition_actions.filter((action) => !targetIds.has(action.id))
+  };
 }
 
 export function groupedButtonTransitions(graph: FlowGraph, transitionId: number) {
@@ -529,6 +664,24 @@ export function buttonLabelValidationErrors(graph: FlowGraph): FlowValidationErr
       transition_id: transition.id,
       action_id: null,
       details: { max_length: BUTTON_LABEL_MAX_LENGTH, actual_length: buttonLabelLength(transition.button_label) }
+    }];
+  });
+}
+
+export function buttonCountValidationErrors(graph: FlowGraph): FlowValidationError[] {
+  return graph.nodes.flatMap((node) => {
+    const count = graph.transitions.filter(
+      (transition) => transition.node_id === node.id && transition.button_label !== null
+    ).length;
+    if (count <= BUTTONS_PER_NODE_MAX) return [];
+    return [{
+      code: "TOO_MANY_BUTTONS",
+      message: `O nó possui ${count} botões; o máximo permitido é ${BUTTONS_PER_NODE_MAX}.`,
+      node_id: node.id,
+      node_key: node.key,
+      transition_id: null,
+      action_id: null,
+      details: { max_count: BUTTONS_PER_NODE_MAX, actual_count: count }
     }];
   });
 }

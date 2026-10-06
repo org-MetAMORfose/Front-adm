@@ -63,6 +63,36 @@ export type FlowActionDependency = {
   depends_on_id: number;
 };
 
+export type FlowActionParameter = {
+  key: string;
+  label: string;
+  type: "string";
+  required: boolean;
+  pattern?: string;
+};
+
+export type FlowActionDefinition = {
+  key: string;
+  label: string;
+  description: string;
+  config_type: string;
+  default_is_required: boolean;
+  parameters: FlowActionParameter[];
+};
+
+export type FlowActionCatalog = {
+  actions: FlowActionDefinition[];
+};
+
+export type FlowSheetTab = {
+  title: string;
+  gid: number;
+};
+
+export type FlowSheetTabCatalog = {
+  tabs: FlowSheetTab[];
+};
+
 export type FlowInputErrorMessage = {
   id: number;
   input_type: FlowInputType;

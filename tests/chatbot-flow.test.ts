@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   addButtonToFlow,
+  addActionsToTransitions,
   addInputTypeToFlow,
   buildFlowChanges,
+  buttonCountValidationErrors,
   buttonLabelValidationErrors,
+  deleteActionAcrossTransitions,
   deleteNodeWithConnections,
+  deleteTransitionWithActions,
   groupedButtonTransitions,
   groupedInputTransitions,
   insertNodeInTransition,
@@ -13,7 +17,8 @@ import {
   limitButtonLabel,
   normalizeButtonExpectedValue,
   protectedFlowEntities,
-  recordSavedChanges
+  recordSavedChanges,
+  updateActionAcrossTransitions
 } from "@/lib/chatbotFlowDomain";
 import { layoutFlowGraph, needsInitialLayout } from "@/lib/chatbotFlowLayout";
 import type { FlowGraph } from "@/types/chatbotFlow";
@@ -75,12 +80,31 @@ describe("chatbot flow domain", () => {
     expect(continuation).toMatchObject({ input_type: "AUTO", next_node_id: 2 });
   });
 
-  it("impede apagar nó com action obrigatória", () => {
+  it("apaga nó e suas actions mesmo quando a action é obrigatória", () => {
     const current = graph();
     current.transition_actions.push({ id: 20, transition_id: 10, action_key: "required", config: null, is_required: true });
 
-    expect(protectedFlowEntities(current).requiredNodes.has(1)).toBe(true);
-    expect(() => deleteNodeWithConnections(current, 1)).toThrow("action obrigatória");
+    expect(protectedFlowEntities(current).dependencyNodes.has(1)).toBe(false);
+    const removed = deleteNodeWithConnections(current, 1);
+    expect(removed.nodes.map((node) => node.id)).toEqual([2]);
+    expect(removed.transitions).toEqual([]);
+    expect(removed.transition_actions).toEqual([]);
+  });
+
+  it("apaga uma transição específica e suas actions", () => {
+    const current = graph();
+    current.transitions = [
+      { id: 10, node_id: 1, input_type: "TEXT", expected_value: "a", button_label: "A", next_node_id: 2, position: 0 },
+      { id: 11, node_id: 1, input_type: "TEXT", expected_value: "b", button_label: "B", next_node_id: 2, position: 1 }
+    ];
+    current.transition_actions = [
+      { id: 20, transition_id: 10, action_key: "sheets_store_answer", config: { tab: "Cadastro", column: "G" }, is_required: false },
+      { id: 21, transition_id: 11, action_key: "sheets_store_answer", config: { tab: "Cadastro", column: "G" }, is_required: false }
+    ];
+
+    const removed = deleteTransitionWithActions(current, 11);
+    expect(removed.transitions.map((transition) => transition.id)).toEqual([10]);
+    expect(removed.transition_actions.map((action) => action.id)).toEqual([20]);
   });
 
   it("gera mudança compensatória ao restaurar entidade já conhecida", () => {
@@ -116,6 +140,72 @@ describe("chatbot flow domain", () => {
         draft_entity_id: -1
       })
     ]);
+  });
+
+  it("separa e reúne grupos ao configurar actions em subconjuntos", () => {
+    const current = graph();
+    current.transitions = [
+      { id: 10, node_id: 1, input_type: "TEXT", expected_value: "a", button_label: "A", next_node_id: 2, position: 0 },
+      { id: 11, node_id: 1, input_type: "TEXT", expected_value: "b", button_label: "B", next_node_id: 2, position: 1 }
+    ];
+    const action = {
+      action_key: "sheets_store_answer",
+      config: { config_type: "sheets_store_answer", tab: "Cadastro", column: "G" },
+      is_required: false
+    };
+
+    const onlyA = addActionsToTransitions(current, [10], action);
+    expect(groupedButtonTransitions(onlyA, 10).map((item) => item.id)).toEqual([10]);
+    expect(groupedButtonTransitions(onlyA, 11).map((item) => item.id)).toEqual([11]);
+
+    const both = addActionsToTransitions(onlyA, [11], action);
+    expect(groupedButtonTransitions(both, 10).map((item) => item.id)).toEqual([10, 11]);
+
+    const sourceAction = both.transition_actions.find((item) => item.transition_id === 10);
+    expect(sourceAction).toBeDefined();
+    const updated = updateActionAcrossTransitions(both, sourceAction!.id, [10, 11], {
+      ...action,
+      config: { ...action.config, column: "H" }
+    });
+    expect(updated.transition_actions.map((item) => item.config?.column)).toEqual(["H", "H"]);
+
+    const removed = deleteActionAcrossTransitions(updated, sourceAction!.id, [10, 11]);
+    expect(removed.transition_actions).toEqual([]);
+    expect(groupedButtonTransitions(removed, 10).map((item) => item.id)).toEqual([10, 11]);
+  });
+
+  it("impede mais de dez botões no mesmo nó", () => {
+    const current = graph();
+    current.transitions = Array.from({ length: 10 }, (_, index) => ({
+      id: 10 + index,
+      node_id: 1,
+      input_type: "TEXT" as const,
+      expected_value: `botao-${index}`,
+      button_label: `Botão ${index}`,
+      next_node_id: 2,
+      position: index
+    }));
+
+    expect(() => addButtonToFlow(current, {
+      sourceNodeId: 1,
+      label: "Décimo primeiro",
+      destinationNodeId: 2
+    })).toThrow("no máximo 10 botões");
+
+    current.transitions.push({
+      id: 20,
+      node_id: 1,
+      input_type: "TEXT",
+      expected_value: "extra",
+      button_label: "Extra",
+      next_node_id: 2,
+      position: 10
+    });
+    expect(buttonCountValidationErrors(current)[0]).toMatchObject({
+      code: "TOO_MANY_BUTTONS",
+      node_id: 1,
+      details: { max_count: 10, actual_count: 11 }
+    });
   });
 
   it("organiza grafo com ciclo sem perder a aresta de retorno", async () => {

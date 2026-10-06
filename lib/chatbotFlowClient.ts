@@ -1,10 +1,12 @@
 import { withBasePath } from "@/lib/basePath";
 import type {
   FlowApiErrorDetail,
+  FlowActionCatalog,
   FlowChange,
   FlowGraphResponse,
   FlowRevision,
   FlowRevisionList,
+  FlowSheetTabCatalog,
   FlowValidationResult
 } from "@/types/chatbotFlow";
 
@@ -44,6 +46,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function listFlowRevisions() {
   return request<FlowRevisionList>("/revisions");
+}
+
+export function listFlowActions() {
+  return request<FlowActionCatalog>("/actions");
+}
+
+export function listFlowSheetTabs() {
+  return request<FlowSheetTabCatalog>("/sheets/tabs");
 }
 
 export function getFlowRevision(revisionId: number) {
