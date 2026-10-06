@@ -140,11 +140,12 @@ export function buildFlowChanges(
   ];
 }
 
-export function recordSavedCreates(known: Set<string>, changes: FlowChange[]) {
+export function recordSavedChanges(known: Set<string>, changes: FlowChange[]) {
   for (const change of changes) {
-    if (change.operation === "CREATE" && change.draft_entity_id !== undefined) {
-      known.add(entityKey(change.entity_type, change.draft_entity_id));
-    }
+    if (change.draft_entity_id === undefined) continue;
+    const key = entityKey(change.entity_type, change.draft_entity_id);
+    if (change.operation === "CREATE") known.add(key);
+    if (change.operation === "DELETE") known.delete(key);
   }
 }
 

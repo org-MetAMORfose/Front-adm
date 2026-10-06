@@ -7,7 +7,7 @@ import {
   buildFlowChanges,
   cloneGraph,
   knownEntityKeys,
-  recordSavedCreates
+  recordSavedChanges
 } from "@/lib/chatbotFlowDomain";
 import type { FlowGraph, FlowSaveStatus } from "@/types/chatbotFlow";
 
@@ -104,7 +104,7 @@ export function useFlowEditorState({
     const task = (async () => {
       try {
         await saveFlowChanges(revisionId, changes);
-        recordSavedCreates(knownRef.current, changes);
+        recordSavedChanges(knownRef.current, changes);
         baselineRef.current = sentSnapshot;
         setLastSavedAt(new Date());
         const remaining = buildFlowChanges(
