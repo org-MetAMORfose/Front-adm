@@ -36,7 +36,7 @@ export function normalizeBrazilianPhone(value: string | null | undefined) {
 }
 
 export function isValidBrazilianMobile(value: string | null | undefined) {
-  return /^55[1-9]{2}9\d{8}$/.test(normalizeBrazilianPhone(value));
+  return /^55[1-9]{2}(?:9\d{8}|[6-9]\d{7})$/.test(normalizeBrazilianPhone(value));
 }
 
 export function displayBrazilianPhone(value: string | null | undefined) {

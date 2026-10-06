@@ -31,7 +31,9 @@ function isSeparatorRow(cells: string[]) {
 
 function isHeaderRow(cells: string[]) {
   const value = normalizeSearch(cells.join(" "));
-  return value.includes("nome") && (value.includes("telefone") || value.includes("celular"));
+  const hasName = value.includes("nome") || value.includes("name");
+  const hasPhone = value.includes("telefone") || value.includes("celular") || value.includes("phone");
+  return hasName && hasPhone;
 }
 
 function looksLikePhone(value: string) {
@@ -41,6 +43,15 @@ function looksLikePhone(value: string) {
 
 function looksLikeDate(value: string) {
   return /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value) || /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function looksLikeDateTime(value: string) {
+  return /^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}(?::\d{2})?$/.test(value)
+    || /^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}/.test(value);
+}
+
+function looksLikeEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export function normalizeImportedBirthDate(value: string) {
@@ -56,13 +67,21 @@ export function normalizeImportedBirthDate(value: string) {
 
 function parseRow(cells: string[], row: number): ImportedPatient {
   const phoneIndex = cells.findIndex(looksLikePhone);
-  const birthIndex = cells.findLastIndex(looksLikeDate);
+  const birthIndex = cells.findLastIndex(
+    (cell, index) => index > phoneIndex && looksLikeDate(cell)
+  );
   const name = phoneIndex > 0
-    ? cells.slice(0, phoneIndex).find((cell) => cell.length > 0) ?? ""
+    ? cells.slice(0, phoneIndex).findLast(
+        (cell) => cell.length > 0
+          && !looksLikeDateTime(cell)
+          && !looksLikeDate(cell)
+          && !looksLikeEmail(cell)
+      ) ?? ""
     : "";
   const phone = phoneIndex >= 0 ? cells[phoneIndex] : "";
-  const between = phoneIndex >= 0 && birthIndex > phoneIndex
-    ? cells.slice(phoneIndex + 1, birthIndex).filter(Boolean)
+  const dataEnd = birthIndex > phoneIndex ? birthIndex : cells.length;
+  const between = phoneIndex >= 0
+    ? cells.slice(phoneIndex + 1, dataEnd).filter(Boolean)
     : [];
   const area = between[0] ?? "";
   const approach = between.slice(1).join(" ");
@@ -74,7 +93,7 @@ function parseRow(cells: string[], row: number): ImportedPatient {
   if (name.length < 2) errors.push("Nome ausente");
   if (!isValidBrazilianMobile(phone)) errors.push("Celular inválido");
   if (!area) errors.push("Área ausente");
-  if (!birthDate || !isValidPastDateOnly(birthDate)) errors.push("Nascimento inválido");
+  if (birthDate && !isValidPastDateOnly(birthDate)) errors.push("Nascimento inválido");
 
   return {
     row,
@@ -98,16 +117,26 @@ export function parsePatientPaste(value: string) {
 
 export function validateImportedAreas(
   patients: ImportedPatient[],
-  activeAreas: string[]
+  activeAreas: string[],
+  knownAreas?: string[]
 ) {
   return patients.map((patient) => {
     const matchingArea = activeAreas.find(
       (area) => normalizeSearch(area) === normalizeSearch(patient.area)
     );
-    const errors = patient.errors.filter((error) => error !== "Área sem ciclo ativo");
+    const knownArea = knownAreas?.find(
+      (area) => normalizeSearch(area) === normalizeSearch(patient.area)
+    );
+    const errors = patient.errors.filter(
+      (error) => error !== "Área sem ciclo ativo" && error !== "Nenhum profissional cadastrado nessa área"
+    );
 
-    if (patient.area && !matchingArea) errors.push("Área sem ciclo ativo");
-    return { ...patient, area: matchingArea ?? patient.area, errors };
+    if (patient.area && knownAreas && !knownArea) {
+      errors.push("Nenhum profissional cadastrado nessa área");
+    } else if (patient.area && !matchingArea) {
+      errors.push("Área sem ciclo ativo");
+    }
+    return { ...patient, area: matchingArea ?? knownArea ?? patient.area, errors };
   });
 }
 

@@ -29,7 +29,7 @@ export function PatientForm({ activeAreas, onCancel, onSuccess }: Props) {
     event.preventDefault();
     setError(null);
     if (!isValidBrazilianMobile(phone)) {
-      setError("Informe um celular válido com DDD e nove dígitos.");
+      setError("Informe um celular válido com DDD e oito ou nove dígitos.");
       return;
     }
     if (!area) {
