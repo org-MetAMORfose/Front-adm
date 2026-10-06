@@ -34,10 +34,12 @@ describe("Brazilian phone helpers", () => {
     expect(isValidBrazilianMobile(undefined)).toBe(false);
   });
 
-  it("rejects incomplete and landline numbers", () => {
-    expect(isValidBrazilianMobile("(11) 9999-9999")).toBe(false);
+  it("accepts mobile numbers with eight or nine digits and rejects landlines", () => {
+    expect(isValidBrazilianMobile("(11) 9999-9999")).toBe(true);
+    expect(isValidBrazilianMobile("(85) 8215-0845")).toBe(true);
     expect(isValidBrazilianMobile("(11) 39999-9999")).toBe(false);
     expect(isValidBrazilianMobile("(11) 99999-9999")).toBe(true);
+    expect(displayBrazilianPhone("551199999999")).toBe("+55 (11) 9999-9999");
   });
 });
 

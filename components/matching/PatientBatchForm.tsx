@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Loader2, Trash2, Users } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 
 import { withBasePath } from "@/lib/basePath";
 import {
@@ -13,6 +13,7 @@ import { displayBrazilianPhone } from "@/lib/phone";
 
 type Props = {
   activeAreas: string[];
+  knownAreas: string[];
   onCancel: () => void;
   onSuccess: () => void;
 };
@@ -25,17 +26,17 @@ function displayBirthDate(value: string) {
   return year && month && day ? `${day}/${month}/${year}` : value || "--";
 }
 
-export function PatientBatchForm({ activeAreas, onCancel, onSuccess }: Props) {
+export function PatientBatchForm({ activeAreas, knownAreas, onCancel, onSuccess }: Props) {
   const [pastedPatients, setPastedPatients] = useState("");
-  const [removedRows, setRemovedRows] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const patients = useMemo(() => {
     const parsed = validateImportedAreas(
       parsePatientPaste(pastedPatients),
-      activeAreas
-    ).filter((patient) => !removedRows.has(patient.row));
+      activeAreas,
+      knownAreas
+    );
     const duplicatePhones = findDuplicateImportedPhones(parsed);
 
     return parsed.map((patient) => ({
@@ -44,13 +45,9 @@ export function PatientBatchForm({ activeAreas, onCancel, onSuccess }: Props) {
         ? [...patient.errors, "Celular repetido no lote"]
         : patient.errors
     }));
-  }, [activeAreas, pastedPatients, removedRows]);
+  }, [activeAreas, knownAreas, pastedPatients]);
 
   const hasErrors = patients.some((patient) => patient.errors.length > 0);
-
-  function removeRow(row: number) {
-    setRemovedRows((current) => new Set(current).add(row));
-  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -61,7 +58,7 @@ export function PatientBatchForm({ activeAreas, onCancel, onSuccess }: Props) {
       return;
     }
     if (hasErrors) {
-      setError("Corrija ou remova as linhas marcadas antes de enviar.");
+      setError("Corrija as linhas marcadas na planilha e cole os dados novamente antes de enviar.");
       return;
     }
 
@@ -97,7 +94,7 @@ export function PatientBatchForm({ activeAreas, onCancel, onSuccess }: Props) {
   return (
     <form onSubmit={submit} className="space-y-5 p-5 sm:p-6">
       <div className="rounded-lg border border-sage/20 bg-sage/5 p-3 text-sm text-ink/65">
-        Copie as linhas no Google Sheets e cole abaixo. A lista será validada antes do envio para a Lambda de matching.
+        Copie as linhas no Google Sheets e cole abaixo. O cabeçalho e uma coluna inicial de data e hora são ignorados. A lista será validada antes do envio.
       </div>
 
       <div>
@@ -109,15 +106,15 @@ export function PatientBatchForm({ activeAreas, onCancel, onSuccess }: Props) {
           value={pastedPatients}
           onChange={(event) => {
             setPastedPatients(event.target.value);
-            setRemovedRows(new Set());
             setError(null);
           }}
-          rows={5}
+          rows={7}
+          wrap="off"
           className={`${inputClass} resize-y font-mono`}
-          placeholder={'\tArthur\t\t5511974527717\tPsicoterapia\t01/01/2000'}
+          placeholder={'30/09/2026 15:44:46\tArthur\t\t5511974527717\tPsicoterapia\t01/01/2000'}
         />
         <p className="mt-1.5 text-xs text-ink/45">
-          Aceita as colunas vazias do exemplo. Também aceita: nome, telefone, área, abordagem opcional e nascimento.
+          Formato reconhecido: nome, e-mail opcional, celular, área e nascimento opcional. Aceita celular com oito ou nove dígitos e exibe no formato brasileiro.
         </p>
       </div>
 
@@ -130,7 +127,7 @@ export function PatientBatchForm({ activeAreas, onCancel, onSuccess }: Props) {
           <div className="max-h-64 overflow-auto">
             <table className="min-w-[760px] w-full text-left text-xs">
               <thead className="sticky top-0 bg-white text-ink/45">
-                <tr><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Celular</th><th className="px-3 py-2">Área</th><th className="px-3 py-2">Nascimento</th><th className="px-3 py-2">Validação</th><th className="w-12 px-2 py-2"><span className="sr-only">Remover</span></th></tr>
+                <tr><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Celular</th><th className="px-3 py-2">Área</th><th className="px-3 py-2">Nascimento</th><th className="px-3 py-2">Validação</th></tr>
               </thead>
               <tbody className="divide-y divide-black/5">
                 {patients.map((patient) => (
@@ -144,11 +141,6 @@ export function PatientBatchForm({ activeAreas, onCancel, onSuccess }: Props) {
                     <td className="px-3 py-2 text-ink/65">{displayBirthDate(patient.birth_date)}</td>
                     <td className={`px-3 py-2 ${patient.errors.length > 0 ? "text-coral" : "font-medium text-emerald-700"}`}>
                       {patient.errors.length > 0 ? patient.errors.join(" · ") : "Pronto"}
-                    </td>
-                    <td className="px-2 py-2">
-                      <button type="button" onClick={() => removeRow(patient.row)} className="rounded p-1.5 text-ink/35 hover:bg-coral/10 hover:text-coral" aria-label={`Remover ${patient.name || `linha ${patient.row}`}`}>
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </button>
                     </td>
                   </tr>
                 ))}

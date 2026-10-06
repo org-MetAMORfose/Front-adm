@@ -7,11 +7,12 @@ type Props = {
   open: boolean;
   title: string;
   description?: string;
+  size?: "default" | "wide";
   children: ReactNode;
   onClose: () => void;
 };
 
-export function Modal({ open, title, description, children, onClose }: Props) {
+export function Modal({ open, title, description, size = "default", children, onClose }: Props) {
   useEffect(() => {
     if (!open) return;
 
@@ -43,7 +44,7 @@ export function Modal({ open, title, description, children, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl"
+        className={`relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl ${size === "wide" ? "sm:max-w-6xl" : "sm:max-w-2xl"}`}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-black/10 bg-white px-5 py-4 sm:px-6">
           <div>

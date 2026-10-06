@@ -30,7 +30,7 @@ export function ProfessionalEditForm({ professional, knownAreas, onCancel, onSuc
     event.preventDefault();
     setError(null);
     if (!isValidBrazilianMobile(phone)) {
-      setError("Informe um celular válido com DDD e nove dígitos.");
+      setError("Informe um celular válido com DDD e oito ou nove dígitos.");
       return;
     }
     setSubmitting(true);

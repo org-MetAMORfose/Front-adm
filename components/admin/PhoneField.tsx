@@ -24,7 +24,7 @@ export function PhoneField({ value, onChange, id = "phone-number" }: Props) {
           onChange={(event) => onChange(event.target.value)}
           inputMode="tel"
           autoComplete="tel-national"
-          placeholder="(11) 99999-9999"
+          placeholder="(11) 9999-9999 ou 99999-9999"
           className="min-w-0 flex-1 px-3 py-2.5 text-sm outline-none"
           required
         />

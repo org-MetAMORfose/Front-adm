@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarPlus,
   Clock3,
+  FileSpreadsheet,
   Plus,
   RotateCcw,
   Search,
@@ -19,6 +20,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Modal } from "@/components/admin/Modal";
 import { CycleForm } from "@/components/matching/CycleForm";
 import { MetricCard } from "@/components/matching/MetricCard";
+import { PatientBatchForm } from "@/components/matching/PatientBatchForm";
 import { PatientForm } from "@/components/matching/PatientForm";
 import { ProfessionalForm } from "@/components/matching/ProfessionalForm";
 import { ProfessionalSummary } from "@/components/matching/ProfessionalSummary";
@@ -31,6 +33,7 @@ import type {
 } from "@/types/matching";
 
 type ModalName = "patient" | "professional" | "cycle" | null;
+type PatientMode = "single" | "spreadsheet";
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE" | "OVERDUE";
 type TypeFilter = "ALL" | "REGULAR" | "REPLACEMENT";
 type SortOption = "PRIORITY" | "DEADLINE" | "NAME" | "PENDING";
@@ -47,6 +50,7 @@ async function fetchDistribution() {
 export default function DistributionPage() {
   const queryClient = useQueryClient();
   const [modal, setModal] = useState<ModalName>(null);
+  const [patientMode, setPatientMode] = useState<PatientMode>("single");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("ALL");
@@ -110,7 +114,7 @@ export default function DistributionPage() {
 
   const actions = (
     <>
-      <button type="button" onClick={() => setModal("patient")} className="inline-flex items-center gap-2 rounded-lg border border-sage/25 bg-white px-3 py-2 text-sm font-semibold text-sage transition hover:bg-sage/5">
+      <button type="button" onClick={() => { setPatientMode("single"); setModal("patient"); }} className="inline-flex items-center gap-2 rounded-lg border border-sage/25 bg-white px-3 py-2 text-sm font-semibold text-sage transition hover:bg-sage/5">
         <UserPlus className="h-4 w-4" aria-hidden />Adicionar paciente
       </button>
       <button type="button" onClick={() => setModal("professional")} className="inline-flex items-center gap-2 rounded-lg border border-sage/25 bg-white px-3 py-2 text-sm font-semibold text-sage transition hover:bg-sage/5">
@@ -197,8 +201,28 @@ export default function DistributionPage() {
         ) : null}
       </div>
 
-      <Modal open={modal === "patient"} title="Adicionar pacientes" description="Informe nome, celular, área e, se disponível, nascimento." onClose={() => setModal(null)}>
-        <PatientForm activeAreas={query.data?.active_areas ?? []} onCancel={() => setModal(null)} onSuccess={() => void changed("Paciente cadastrado e enviado para o matching.")} />
+      <Modal open={modal === "patient"} title="Adicionar pacientes" description="Cadastre uma pessoa ou valide várias linhas copiadas de uma planilha." size={patientMode === "spreadsheet" ? "wide" : "default"} onClose={() => setModal(null)}>
+        <div className="grid grid-cols-2 gap-2 border-b border-black/10 px-5 pt-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => setPatientMode("single")}
+            className={`inline-flex items-center justify-center gap-2 rounded-t-lg border-b-2 px-3 py-3 text-sm font-semibold transition ${patientMode === "single" ? "border-sage text-sage" : "border-transparent text-ink/50 hover:text-ink"}`}
+          >
+            <UserPlus className="h-4 w-4" aria-hidden />Um paciente
+          </button>
+          <button
+            type="button"
+            onClick={() => setPatientMode("spreadsheet")}
+            className={`inline-flex items-center justify-center gap-2 rounded-t-lg border-b-2 px-3 py-3 text-sm font-semibold transition ${patientMode === "spreadsheet" ? "border-sage text-sage" : "border-transparent text-ink/50 hover:text-ink"}`}
+          >
+            <FileSpreadsheet className="h-4 w-4" aria-hidden />Por planilha
+          </button>
+        </div>
+        {patientMode === "single" ? (
+          <PatientForm activeAreas={query.data?.active_areas ?? []} onCancel={() => setModal(null)} onSuccess={() => void changed("Paciente cadastrado e enviado para o matching.")} />
+        ) : (
+          <PatientBatchForm activeAreas={query.data?.active_areas ?? []} knownAreas={query.data?.known_areas ?? []} onCancel={() => setModal(null)} onSuccess={() => void changed("Pacientes cadastrados e enviados para o matching.")} />
+        )}
       </Modal>
       <Modal open={modal === "professional"} title="Adicionar profissional" description="Cadastre os dados essenciais e informações opcionais do profissional." onClose={() => setModal(null)}>
         <ProfessionalForm knownAreas={query.data?.known_areas ?? []} onCancel={() => setModal(null)} onSuccess={() => void changed("Profissional encaminhado ao chatbot para cadastro.")} />
