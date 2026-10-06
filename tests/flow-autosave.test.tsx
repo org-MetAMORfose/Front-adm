@@ -113,4 +113,31 @@ describe("flow autosave", () => {
       new_value: { position_x: 420, position_y: 180 }
     });
   });
+
+  it("recria ID temporário apagado com CREATE em vez de UPDATE", async () => {
+    saveMock.mockResolvedValue({ revision_id: 2, change_count: 1 });
+    const { result } = renderHook(() => useFlowEditorState({ initialGraph: graph(), revisionId: 2, editable: true }));
+
+    const created = graph();
+    created.nodes.push({ id: -1, key: "novo_no_1", type: "MESSAGE", title: "Novo", description: null, message: "Mensagem", position: 1, position_x: 0, position_y: 0 });
+    act(() => result.current.commit(created, "Criar nó"));
+    await act(async () => result.current.flush());
+
+    act(() => result.current.commit(graph(), "Apagar nó"));
+    await act(async () => result.current.flush());
+
+    const recreated = graph();
+    recreated.nodes.push({ id: -1, key: "novo_no_1", type: "END", title: "Outro", description: null, message: "Fim", position: 1, position_x: 0, position_y: 0 });
+    act(() => result.current.commit(recreated, "Criar outro nó"));
+    await act(async () => result.current.flush());
+
+    expect(saveMock).toHaveBeenCalledTimes(3);
+    expect(saveMock.mock.calls[2][1]).toEqual([
+      expect.objectContaining({
+        entity_type: "NODE",
+        operation: "CREATE",
+        draft_entity_id: -1
+      })
+    ]);
+  });
 });

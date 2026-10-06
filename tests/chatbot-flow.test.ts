@@ -12,7 +12,8 @@ import {
   knownEntityKeys,
   limitButtonLabel,
   normalizeButtonExpectedValue,
-  protectedFlowEntities
+  protectedFlowEntities,
+  recordSavedChanges
 } from "@/lib/chatbotFlowDomain";
 import { layoutFlowGraph, needsInitialLayout } from "@/lib/chatbotFlowLayout";
 import type { FlowGraph } from "@/types/chatbotFlow";
@@ -91,6 +92,30 @@ describe("chatbot flow domain", () => {
     const changes = buildFlowChanges(deleted, original, known);
 
     expect(changes.some((item) => item.entity_type === "NODE" && item.operation === "UPDATE" && item.entity_id === 2)).toBe(true);
+  });
+
+  it("trata ID temporário apagado e reutilizado como uma nova entidade", () => {
+    const original = graph();
+    const created = graph();
+    created.nodes.push({ id: -1, key: "novo_no_1", type: "MESSAGE", title: "Novo", description: null, message: "Mensagem", position: 2, position_x: 0, position_y: 0 });
+    const known = knownEntityKeys(original);
+    const createChanges = buildFlowChanges(original, created, known);
+    recordSavedChanges(known, createChanges);
+
+    const deleted = graph();
+    const deleteChanges = buildFlowChanges(created, deleted, known);
+    recordSavedChanges(known, deleteChanges);
+
+    const recreated = graph();
+    recreated.nodes.push({ id: -1, key: "novo_no_1", type: "END", title: "Outro", description: null, message: "Fim", position: 2, position_x: 0, position_y: 0 });
+
+    expect(buildFlowChanges(deleted, recreated, known)).toEqual([
+      expect.objectContaining({
+        entity_type: "NODE",
+        operation: "CREATE",
+        draft_entity_id: -1
+      })
+    ]);
   });
 
   it("organiza grafo com ciclo sem perder a aresta de retorno", async () => {
