@@ -43,6 +43,10 @@ function lastMessagePreview(conversation: Conversation) {
     return "Vídeo recebido";
   }
 
+  if (conversation.last_message_media_type === "audio") {
+    return "Áudio recebido";
+  }
+
   if (conversation.last_message_media_type === "document") {
     return "Documento recebido";
   }
