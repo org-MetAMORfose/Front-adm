@@ -68,7 +68,7 @@ export default function DistributionPage() {
     return [...(query.data?.professionals ?? [])]
       .filter((professional) => {
         const matchesSearch = normalizeSearch(
-          `${professional.name} ${professional.area} ${professional.phone_number} ${professional.professional_register}`
+          `${professional.name} ${professional.matching_profile.areas.join(" ")} ${professional.matching_profile.psychotherapy.approaches.join(" ")} ${professional.phone_number} ${professional.professional_register}`
         ).includes(normalized);
         const matchesStatus =
           status === "ALL" ||

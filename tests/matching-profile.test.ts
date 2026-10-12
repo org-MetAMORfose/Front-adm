@@ -18,7 +18,7 @@ describe("matching profile", () => {
         specialties: ["Bipolaridade", "Borderline"]
       },
       profile: { gender: "Mulher", race: "Negra", lgbtqiapn_plus: true }
-    }, { area: "Psicoterapia" })).toEqual({
+    })).toEqual({
       schema_version: 1,
       areas: ["Psicoterapia", "Psiquiatria"],
       psychotherapy: {
@@ -32,16 +32,11 @@ describe("matching profile", () => {
     });
   });
 
-  it("falls back to legacy columns for old records", () => {
-    expect(normalizeMatchingProfile({}, {
-      area: "Psicoterapia",
-      approach: "Psicanálise",
-      gender: "Mulher",
-      minorityGroup: "Pessoa negra LGBTQIAPN+"
-    })).toMatchObject({
-      areas: ["Psicoterapia"],
-      psychotherapy: { approaches: ["Psicanálise"], specialties: [] },
-      profile: { gender: "Mulher", race: "Negra", lgbtqiapn_plus: true }
+  it("does not invent matching values from legacy columns", () => {
+    expect(normalizeMatchingProfile({})).toMatchObject({
+      areas: [],
+      psychotherapy: { approaches: [], specialties: [] },
+      profile: { gender: null, race: null, lgbtqiapn_plus: null }
     });
   });
 
