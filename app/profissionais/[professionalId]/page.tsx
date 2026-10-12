@@ -21,13 +21,14 @@ import { CycleTable } from "@/components/matching/CycleTable";
 import { MetricCard } from "@/components/matching/MetricCard";
 import { PatientConnectionsTable } from "@/components/matching/PatientConnectionsTable";
 import { ProfessionalEditForm } from "@/components/matching/ProfessionalEditForm";
+import { MatchingProfileView } from "@/components/matching/MatchingProfileView";
 import { ProfessionalStatusBadge } from "@/components/matching/StatusBadge";
 import { withBasePath } from "@/lib/basePath";
 import { formatDate, PROFESSIONAL_BACKGROUND_MAX_LENGTH } from "@/lib/matchingDomain";
 import { displayBrazilianPhone } from "@/lib/phone";
 import type { DistributionData, MatchingCycleView, ProfessionalDetail, ProfessionalOption } from "@/types/matching";
 
-type Tab = "OVERVIEW" | "CYCLES" | "CONNECTIONS" | "REPLACEMENTS" | "BACKGROUND";
+type Tab = "OVERVIEW" | "CYCLES" | "CONNECTIONS" | "REPLACEMENTS" | "BACKGROUND" | "PROFILE";
 
 async function fetchProfessional(id: number) {
   const response = await fetch(withBasePath(`/api/admin/professionals/${id}`), {
@@ -154,7 +155,7 @@ export default function ProfessionalDetailPage() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden bg-mist text-ink">
-      <AdminHeader title={professional?.name ?? "Detalhes do profissional"} description={professional ? `${professional.area} · ${displayBrazilianPhone(professional.phone_number)}` : "Ciclos, conexões e compromissos."} actions={actions} />
+      <AdminHeader title={professional?.name ?? "Detalhes do profissional"} description={professional ? `${professional.matching_profile.areas.join(", ")} · ${displayBrazilianPhone(professional.phone_number)}` : "Ciclos, conexões e compromissos."} actions={actions} />
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 flex-col gap-3 overflow-hidden px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/distribuicao" className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-ink/55 hover:text-sage">
@@ -178,7 +179,7 @@ export default function ProfessionalDetailPage() {
                   <h2 className="text-2xl font-semibold">{professional.name}</h2>
                   <ProfessionalStatusBadge active={professional.is_active} overdue={professional.cycles.some((cycle) => cycle.status === "OVERDUE")} />
                 </div>
-                <p className="mt-1 text-sm text-ink/55">{professional.area}</p>
+                <p className="mt-1 text-sm text-ink/55">{professional.matching_profile.areas.join(", ")}</p>
               </div>
             </section>
 
@@ -195,7 +196,8 @@ export default function ProfessionalDetailPage() {
                   ["CYCLES", "Ciclos"],
                   ["CONNECTIONS", "Pacientes"],
                   ["REPLACEMENTS", "Reposições"],
-                  ["BACKGROUND", "Background"]
+                  ["BACKGROUND", "Background"],
+                  ["PROFILE", "Perfil de matching"]
                 ] as Array<[Tab, string]>).map(([value, label]) => (
                   <button key={value} type="button" onClick={() => setTab(value)} className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${tab === value ? "border-sage text-sage" : "border-transparent text-ink/50 hover:text-ink"}`}>
                     {label}
@@ -211,7 +213,9 @@ export default function ProfessionalDetailPage() {
                   <h3 className="font-semibold">Cadastro</h3>
                   <dl className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                     <Field label="Nome" value={professional.name} />
-                    <Field label="Área" value={professional.area} />
+                    <Field label="Áreas" value={professional.matching_profile.areas.join(", ")} />
+                    <Field label="Abordagens" value={professional.matching_profile.psychotherapy.approaches.join(", ")} />
+                    <Field label="Especialidades" value={professional.matching_profile.psychotherapy.specialties.join(", ")} />
                     <Field label="Telefone" value={displayBrazilianPhone(professional.phone_number)} />
                     <Field label="E-mail" value={professional.email} />
                     <Field label="Nascimento" value={professional.birth_date ? formatDate(professional.birth_date) : null} />
@@ -243,6 +247,18 @@ export default function ProfessionalDetailPage() {
                   </div>
                 </div>
                 <p className="mt-5 whitespace-pre-wrap break-words text-sm leading-6 text-ink/75">{background || "Nenhum background informado para este profissional."}</p>
+              </section>
+            ) : null}
+
+            {tab === "PROFILE" ? (
+              <section className="rounded-xl border border-black/10 bg-white p-5 shadow-subtle">
+                <div className="border-b border-black/10 pb-4">
+                  <h3 className="font-semibold text-ink">Dados usados no matching</h3>
+                  <p className="mt-1 text-sm text-ink/55">Especialidades e preferências ajudam a priorizar compatibilidade; não impedem outros profissionais de serem apresentados.</p>
+                </div>
+                <div className="mt-5">
+                  <MatchingProfileView profile={professional.matching_profile} />
+                </div>
               </section>
             ) : null}
 

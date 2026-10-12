@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { registerPatientsThroughChatbot } from "@/lib/chatbotRegistration";
 import { isValidPastDateOnly, normalizeSearch } from "@/lib/matchingDomain";
+import {
+  isPsychotherapyArea,
+  normalizeMatchingProfile,
+  PSYCHOTHERAPY_APPROACHES,
+  PSYCHOTHERAPY_SPECIALTIES
+} from "@/lib/matchingProfile";
 import { isValidBrazilianMobile, normalizeBrazilianPhone } from "@/lib/phone";
 import type { PatientRegistrationPayload } from "@/types/matching";
 
@@ -10,17 +16,48 @@ function text(body: Record<string, unknown>, field: string): string {
   return typeof body[field] === "string" ? body[field].trim() : "";
 }
 
+function stringList(body: Record<string, unknown>, field: string): string[] {
+  const value = body[field];
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((item): item is string =>
+    typeof item === "string" && item.trim().length > 0
+  ).map((item) => item.trim()))];
+}
+
 function validatePatient(body: Record<string, unknown>, row: number) {
   const name = text(body, "name");
   const rawPhone = text(body, "phone_number");
   const birthDate = text(body, "birth_date");
   const area = text(body, "area");
+  const psychotherapy = isPsychotherapyArea(area);
+  const psychotherapyApproach = psychotherapy
+    ? text(body, "psychotherapy_approach") || null
+    : null;
+  const psychotherapySpecialties = psychotherapy
+    ? stringList(body, "psychotherapy_specialties")
+    : [];
+  const preferredGender = text(body, "preferred_gender") || null;
+  const preferredRace = text(body, "preferred_race") || null;
+  const rawLgbtPreference = body.prefers_lgbtqiapn_plus;
+  const prefersLgbtqiapnPlus = typeof rawLgbtPreference === "boolean"
+    ? rawLgbtPreference
+    : null;
   const errors: string[] = [];
 
   if (name.length < 2) errors.push("nome inválido");
   if (!isValidBrazilianMobile(rawPhone)) errors.push("celular inválido");
   if (birthDate && !isValidPastDateOnly(birthDate)) errors.push("nascimento inválido");
   if (!area) errors.push("área ausente");
+  if (psychotherapyApproach && !PSYCHOTHERAPY_APPROACHES.includes(
+    psychotherapyApproach as (typeof PSYCHOTHERAPY_APPROACHES)[number]
+  )) errors.push("abordagem de psicoterapia inválida");
+  if (psychotherapySpecialties.some((specialty) => !PSYCHOTHERAPY_SPECIALTIES.includes(
+    specialty as (typeof PSYCHOTHERAPY_SPECIALTIES)[number]
+  ))) errors.push("especialidade de psicoterapia inválida");
+  if (rawLgbtPreference !== undefined && rawLgbtPreference !== null
+    && rawLgbtPreference !== "" && typeof rawLgbtPreference !== "boolean") {
+    errors.push("preferência LGBTQIAPN+ inválida");
+  }
 
   return {
     row,
@@ -30,8 +67,13 @@ function validatePatient(body: Record<string, unknown>, row: number) {
       phone_number: isValidBrazilianMobile(rawPhone)
         ? normalizeBrazilianPhone(rawPhone)
         : rawPhone,
-      ...(birthDate ? { birth_date: birthDate } : {}),
-      area
+      birth_date: birthDate || null,
+      area,
+      psychotherapy_approach: psychotherapyApproach,
+      psychotherapy_specialties: psychotherapySpecialties,
+      preferred_gender: preferredGender,
+      preferred_race: preferredRace,
+      prefers_lgbtqiapn_plus: prefersLgbtqiapnPlus
     } satisfies PatientRegistrationPayload
   };
 }
@@ -84,9 +126,12 @@ export async function POST(request: Request) {
 
   const now = new Date();
   const availableProfessionals = await prisma.professional.findMany({
-    where: { area: { in: validated.map((patient) => patient.payload.area) } },
     select: {
       area: true,
+      approach: true,
+      gender: true,
+      minority_group: true,
+      matching_profile: true,
       matching_cycle: {
         where: {
           cancelled_at: null,
@@ -105,7 +150,15 @@ export async function POST(request: Request) {
       .filter((professional) => professional.matching_cycle.some(
         (cycle) => cycle._count.matching_slot < cycle.promised_patients
       ))
-      .map((professional) => normalizeSearch(professional.area))
+      .flatMap((professional) => normalizeMatchingProfile(
+        professional.matching_profile,
+        {
+          area: professional.area,
+          approach: professional.approach,
+          gender: professional.gender,
+          minorityGroup: professional.minority_group
+        }
+      ).areas.map(normalizeSearch))
   );
   const unavailableAreas = [...new Set(
     validated

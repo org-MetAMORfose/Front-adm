@@ -110,6 +110,12 @@ describe("matching domain", () => {
       phone_number: "5511999999999",
       area: "Psicoterapia",
       professional_register: "PENDING-1",
+      matching_profile: {
+        schema_version: 1,
+        areas: ["Psicoterapia"],
+        psychotherapy: { approaches: [], specialties: [] },
+        profile: { gender: null, race: null, lgbtqiapn_plus: null }
+      },
       is_active: false,
       has_regular_cycle: false,
       has_replacement_cycle: false,

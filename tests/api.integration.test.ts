@@ -70,6 +70,11 @@ runApiTests("admin API integration", () => {
     expect(body).toHaveProperty("metrics");
     expect(body).toHaveProperty("professionals");
     expect(body).toHaveProperty("active_areas");
+    if (body.professionals[0]) {
+      expect(body.professionals[0]).toHaveProperty("matching_profile.areas");
+      expect(body.professionals[0]).toHaveProperty("matching_profile.psychotherapy.specialties");
+      expect(body.professionals[0]).toHaveProperty("matching_profile.profile.lgbtqiapn_plus");
+    }
   });
 
   it("GET professional matching detail returns the selected professional", async (context) => {
@@ -93,9 +98,10 @@ runApiTests("admin API integration", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toHaveProperty(
-      "professional.id",
-      professional.id
-    );
+    const body = await response.json();
+    expect(body).toHaveProperty("professional.id", professional.id);
+    expect(body).toHaveProperty("professional.matching_profile.areas");
+    expect(body).toHaveProperty("professional.matching_profile.psychotherapy.approaches");
+    expect(body).toHaveProperty("professional.matching_profile.profile.gender");
   });
 });

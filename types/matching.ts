@@ -1,5 +1,19 @@
 export type MatchingCycleType = "REGULAR" | "REPLACEMENT";
 
+export type ProfessionalMatchingProfile = {
+  schema_version: number;
+  areas: string[];
+  psychotherapy: {
+    approaches: string[];
+    specialties: string[];
+  };
+  profile: {
+    gender: string | null;
+    race: string | null;
+    lgbtqiapn_plus: boolean | null;
+  };
+};
+
 export type CycleStatus =
   | "ACTIVE"
   | "SCHEDULED"
@@ -17,6 +31,7 @@ export type ProfessionalOption = {
 };
 
 export type ProfessionalDistributionItem = ProfessionalOption & {
+  matching_profile: ProfessionalMatchingProfile;
   is_active: boolean;
   has_regular_cycle: boolean;
   has_replacement_cycle: boolean;
@@ -84,6 +99,7 @@ export type ProfessionalDetail = ProfessionalOption & {
   video_platform: string | null;
   gender: string | null;
   minority_group: string | null;
+  matching_profile: ProfessionalMatchingProfile;
   created_at: string;
   is_active: boolean;
   promised_patients: number;
@@ -106,8 +122,13 @@ export type CreateCyclePayload = {
 export type PatientRegistrationPayload = {
   name: string;
   phone_number: string;
-  birth_date?: string;
+  birth_date: string | null;
   area: string;
+  psychotherapy_approach: string | null;
+  psychotherapy_specialties: string[];
+  preferred_gender: string | null;
+  preferred_race: string | null;
+  prefers_lgbtqiapn_plus: boolean | null;
 };
 
 export type ProfessionalRegistrationPayload = {
@@ -115,11 +136,16 @@ export type ProfessionalRegistrationPayload = {
   phone_number: string;
   email: string;
   area: string;
-  birth_date?: string;
-  background?: string;
-  video_platform?: string;
-  gender?: string;
-  minority_group?: string;
+  birth_date: string | null;
+  background: string | null;
+  video_platform: string | null;
+  gender: string | null;
+  minority_group: string | null;
+  areas: string[];
+  approaches: string[];
+  psychotherapy_specialties: string[];
+  race: string | null;
+  lgbtqiapn_plus: boolean | null;
 };
 
 export type ProfessionalUpdatePayload = ProfessionalRegistrationPayload;
