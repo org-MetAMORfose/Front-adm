@@ -2,11 +2,25 @@ import { NextResponse } from "next/server";
 
 import { registerProfessionalThroughChatbot } from "@/lib/chatbotRegistration";
 import { isValidPastDateOnly, PROFESSIONAL_BACKGROUND_MAX_LENGTH } from "@/lib/matchingDomain";
+import {
+  hasPsychotherapyArea,
+  PSYCHOTHERAPY_APPROACHES,
+  PSYCHOTHERAPY_SPECIALTIES,
+  uniqueAdditionalAreas
+} from "@/lib/matchingProfile";
 import { isValidBrazilianMobile, normalizeBrazilianPhone } from "@/lib/phone";
 import type { ProfessionalRegistrationPayload } from "@/types/matching";
 
 function text(body: Record<string, unknown>, field: string) {
   return typeof body[field] === "string" ? body[field].trim() : "";
+}
+
+function stringList(body: Record<string, unknown>, field: string): string[] {
+  const value = body[field];
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((item): item is string =>
+    typeof item === "string" && item.trim().length > 0
+  ).map((item) => item.trim()))];
 }
 
 function invalid(message: string) {
@@ -37,6 +51,17 @@ function parseProfessionalRegistration(
   const videoPlatform = text(value, "video_platform");
   const gender = text(value, "gender");
   const minorityGroup = text(value, "minority_group");
+  const areas = uniqueAdditionalAreas(area, stringList(value, "areas"));
+  const psychotherapy = hasPsychotherapyArea([area, ...areas]);
+  const approaches = psychotherapy ? stringList(value, "approaches") : [];
+  const psychotherapySpecialties = psychotherapy
+    ? stringList(value, "psychotherapy_specialties")
+    : [];
+  const race = text(value, "race") || null;
+  const rawLgbtqiapnPlus = value.lgbtqiapn_plus;
+  const lgbtqiapnPlus = typeof rawLgbtqiapnPlus === "boolean"
+    ? rawLgbtqiapnPlus
+    : null;
 
   if (name.length < 2) return { ok: false, error: "Informe o nome completo do profissional." };
   if (!isValidBrazilianMobile(rawPhone)) {
@@ -52,19 +77,34 @@ function parseProfessionalRegistration(
   if (background.length > PROFESSIONAL_BACKGROUND_MAX_LENGTH) {
     return { ok: false, error: `O background deve ter no máximo ${PROFESSIONAL_BACKGROUND_MAX_LENGTH} caracteres.` };
   }
+  if (approaches.some((approach) => !PSYCHOTHERAPY_APPROACHES.includes(
+    approach as (typeof PSYCHOTHERAPY_APPROACHES)[number]
+  ))) return { ok: false, error: "Informe somente abordagens válidas." };
+  if (psychotherapySpecialties.some((specialty) => !PSYCHOTHERAPY_SPECIALTIES.includes(
+    specialty as (typeof PSYCHOTHERAPY_SPECIALTIES)[number]
+  ))) return { ok: false, error: "Informe somente especialidades válidas." };
+  if (rawLgbtqiapnPlus !== undefined && rawLgbtqiapnPlus !== null
+    && rawLgbtqiapnPlus !== "" && typeof rawLgbtqiapnPlus !== "boolean") {
+    return { ok: false, error: "Informe uma identificação LGBTQIAPN+ válida." };
+  }
 
   return {
     ok: true,
     value: {
       name,
       phone_number: normalizeBrazilianPhone(rawPhone),
-      ...(birthDate ? { birth_date: birthDate } : {}),
+      birth_date: birthDate || null,
       area,
       email,
-      ...(background ? { background } : {}),
-      ...(videoPlatform ? { video_platform: videoPlatform } : {}),
-      ...(gender ? { gender } : {}),
-      ...(minorityGroup ? { minority_group: minorityGroup } : {})
+      background: background || null,
+      video_platform: videoPlatform || null,
+      gender: gender || null,
+      minority_group: minorityGroup || null,
+      areas,
+      approaches,
+      psychotherapy_specialties: psychotherapySpecialties,
+      race,
+      lgbtqiapn_plus: lgbtqiapnPlus
     }
   };
 }

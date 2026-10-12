@@ -7,6 +7,7 @@ import {
   getPendingPatients,
   isActiveCycleWithPending
 } from "@/lib/matchingDomain";
+import { normalizeMatchingProfile } from "@/lib/matchingProfile";
 import type {
   DistributionData,
   MatchingCycleType,
@@ -51,6 +52,12 @@ export async function getDistributionData(): Promise<DistributionData> {
   const activeAreas = new Set<string>();
 
   const professionalItems = professionals.map((professional) => {
+    const matchingProfile = normalizeMatchingProfile(professional.matching_profile, {
+      area: professional.area,
+      approach: professional.approach,
+      gender: professional.gender,
+      minorityGroup: professional.minority_group
+    });
     const validCycles = professional.matching_cycle.filter(
       (cycle) => cycle.cancelled_at === null
     );
@@ -103,7 +110,9 @@ export async function getDistributionData(): Promise<DistributionData> {
       }
     }
 
-    if (hasActiveCycle) activeAreas.add(professional.area);
+    if (hasActiveCycle) {
+      matchingProfile.areas.forEach((area) => activeAreas.add(area));
+    }
     const nextDeadline = pendingDeadlines.sort(
       (left, right) => left.getTime() - right.getTime()
     )[0];
@@ -115,6 +124,7 @@ export async function getDistributionData(): Promise<DistributionData> {
       phone_number: professional.person.phone_number,
       area: professional.area,
       professional_register: professional.professional_register,
+      matching_profile: matchingProfile,
       is_active: hasActiveCycle,
       has_regular_cycle: validCycles.some((cycle) => cycle.type === "REGULAR"),
       has_replacement_cycle: validCycles.some(
@@ -148,7 +158,14 @@ export async function getDistributionData(): Promise<DistributionData> {
     active_areas: [...activeAreas].sort((left, right) =>
       left.localeCompare(right, "pt-BR")
     ),
-    known_areas: [...new Set(professionals.map((professional) => professional.area))].sort(
+    known_areas: [...new Set(professionals.flatMap((professional) =>
+      normalizeMatchingProfile(professional.matching_profile, {
+        area: professional.area,
+        approach: professional.approach,
+        gender: professional.gender,
+        minorityGroup: professional.minority_group
+      }).areas
+    ))].sort(
       (left, right) => left.localeCompare(right, "pt-BR")
     ),
     generated_at: now.toISOString()
@@ -176,6 +193,13 @@ export async function getProfessionalDetail(
   });
 
   if (!professional) return null;
+
+  const matchingProfile = normalizeMatchingProfile(professional.matching_profile, {
+    area: professional.area,
+    approach: professional.approach,
+    gender: professional.gender,
+    minorityGroup: professional.minority_group
+  });
 
   let promised = 0;
   let delivered = 0;
@@ -257,6 +281,7 @@ export async function getProfessionalDetail(
     video_platform: professional.video_platform,
     gender: professional.gender,
     minority_group: professional.minority_group,
+    matching_profile: matchingProfile,
     created_at: professional.created_at.toISOString(),
     is_active: cycles.some((cycle) => cycle.status === "ACTIVE"),
     promised_patients: promised,

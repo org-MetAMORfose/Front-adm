@@ -38,7 +38,12 @@ function professionalBody(payload: ProfessionalRegistrationPayload | Professiona
     background: payload.background || null,
     video_platform: payload.video_platform || null,
     gender: payload.gender || null,
-    minority_group: payload.minority_group || null
+    minority_group: payload.minority_group || null,
+    areas: payload.areas,
+    approaches: payload.approaches,
+    psychotherapy_specialties: payload.psychotherapy_specialties,
+    race: payload.race || null,
+    lgbtqiapn_plus: payload.lgbtqiapn_plus
   };
 }
 
@@ -80,7 +85,12 @@ export function registerPatientsThroughChatbot(payloads: PatientRegistrationPayl
     name: payload.name,
     phone: payload.phone_number,
     area: payload.area,
-    birth_date: payload.birth_date || null
+    birth_date: payload.birth_date || null,
+    psychotherapy_approach: payload.psychotherapy_approach,
+    psychotherapy_specialties: payload.psychotherapy_specialties,
+    preferred_gender: payload.preferred_gender,
+    preferred_race: payload.preferred_race,
+    prefers_lgbtqiapn_plus: payload.prefers_lgbtqiapn_plus
   }));
   return request(`${chatbotBaseUrl()}/patients`, {
     method: "POST",

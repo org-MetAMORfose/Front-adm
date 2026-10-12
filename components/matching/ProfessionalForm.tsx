@@ -4,8 +4,13 @@ import { useState, type FormEvent } from "react";
 import { Loader2, UserPlus } from "lucide-react";
 
 import { PhoneField } from "@/components/admin/PhoneField";
+import {
+  ProfessionalMatchingFields,
+  type ProfessionalProfileDraft
+} from "@/components/matching/MatchingProfileFields";
 import { withBasePath } from "@/lib/basePath";
 import { PROFESSIONAL_BACKGROUND_MAX_LENGTH } from "@/lib/matchingDomain";
+import { hasPsychotherapyArea, uniqueAreas } from "@/lib/matchingProfile";
 import { isValidBrazilianMobile } from "@/lib/phone";
 
 type Props = { knownAreas: string[]; onCancel: () => void; onSuccess: () => void };
@@ -16,12 +21,17 @@ export function ProfessionalForm({ knownAreas, onCancel, onSuccess }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [area, setArea] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [gender, setGender] = useState("");
-  const [minorityGroup, setMinorityGroup] = useState("");
   const [background, setBackground] = useState("");
   const [videoPlatform, setVideoPlatform] = useState("");
+  const [profile, setProfile] = useState<ProfessionalProfileDraft>({
+    areas: [],
+    approaches: [],
+    specialties: [],
+    gender: "",
+    race: "",
+    lgbtqiapnPlus: null
+  });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,12 +42,34 @@ export function ProfessionalForm({ knownAreas, onCancel, onSuccess }: Props) {
       setError("Informe um celular válido com DDD e oito ou nove dígitos.");
       return;
     }
+    const allAreas = uniqueAreas(profile.areas);
+    if (allAreas.length === 0) {
+      setError("Informe ao menos uma área de atuação no perfil de matching.");
+      return;
+    }
+    const [area, ...areas] = allAreas;
+    const psychotherapy = hasPsychotherapyArea(allAreas);
     setSubmitting(true);
     try {
       const response = await fetch(withBasePath("/api/admin/registrations/professional"), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, phone_number: phone, email, area, birth_date: birthDate, gender, minority_group: minorityGroup, background, video_platform: videoPlatform })
+        body: JSON.stringify({
+          name,
+          phone_number: phone,
+          email,
+          area,
+          birth_date: birthDate || null,
+          gender: profile.gender || null,
+          minority_group: null,
+          background: background || null,
+          video_platform: videoPlatform || null,
+          areas,
+          approaches: psychotherapy ? profile.approaches : [],
+          psychotherapy_specialties: psychotherapy ? profile.specialties : [],
+          race: profile.race || null,
+          lgbtqiapn_plus: profile.lgbtqiapnPlus
+        })
       });
       const body = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(body.error || "Falha ao cadastrar profissional.");
@@ -51,16 +83,14 @@ export function ProfessionalForm({ knownAreas, onCancel, onSuccess }: Props) {
 
   return (
     <form onSubmit={submit} className="space-y-5 p-5 sm:p-6">
-      <div className="rounded-lg border border-sage/20 bg-sage/5 p-3 text-sm text-ink/65">Nome, celular, e-mail e área são obrigatórios. A área aceita texto livre e sugere valores já cadastrados.</div>
+      <div className="rounded-lg border border-sage/20 bg-sage/5 p-3 text-sm text-ink/65">Nome, celular, e-mail e ao menos uma área são obrigatórios. Todas as áreas são informadas no perfil de matching.</div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><label htmlFor="professional-name" className={labelClass}>Nome completo *</label><input id="professional-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" className={inputClass} minLength={2} required /></div>
         <PhoneField value={phone} onChange={setPhone} id="professional-phone" />
         <div><label htmlFor="professional-email" className={labelClass}>E-mail *</label><input id="professional-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" className={inputClass} required /></div>
-        <div className="sm:col-span-2"><label htmlFor="professional-area" className={labelClass}>Área de atuação *</label><input id="professional-area" list="known-professional-areas" value={area} onChange={(event) => setArea(event.target.value)} placeholder="Selecione ou escreva uma nova área" className={inputClass} required /><datalist id="known-professional-areas">{knownAreas.map((item) => <option value={item} key={item} />)}</datalist></div>
         <div><label htmlFor="professional-birth-date" className={labelClass}>Data de nascimento</label><input id="professional-birth-date" type="date" value={birthDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setBirthDate(event.target.value)} className={inputClass} /></div>
         <div><label htmlFor="professional-video" className={labelClass}>Plataforma</label><input id="professional-video" value={videoPlatform} onChange={(event) => setVideoPlatform(event.target.value)} placeholder="Ex.: Google Meet" className={inputClass} /></div>
-        <div><label htmlFor="professional-gender" className={labelClass}>Gênero</label><input id="professional-gender" value={gender} onChange={(event) => setGender(event.target.value)} className={inputClass} /></div>
-        <div><label htmlFor="professional-minority" className={labelClass}>Grupo minoritário</label><input id="professional-minority" value={minorityGroup} onChange={(event) => setMinorityGroup(event.target.value)} className={inputClass} /></div>
+        <ProfessionalMatchingFields idPrefix="professional-profile" knownAreas={knownAreas} value={profile} onChange={setProfile} />
         <div className="sm:col-span-2"><label htmlFor="professional-background" className={labelClass}>Formação e experiência</label><textarea id="professional-background" value={background} onChange={(event) => setBackground(event.target.value)} rows={4} maxLength={PROFESSIONAL_BACKGROUND_MAX_LENGTH} className={inputClass} /><p className="mt-1 text-right text-xs text-ink/45">{background.length} / {PROFESSIONAL_BACKGROUND_MAX_LENGTH}</p></div>
       </div>
       {error ? <p role="alert" className="rounded-lg border border-coral/25 bg-coral/10 p-3 text-sm text-coral">{error}</p> : null}

@@ -4,8 +4,13 @@ import { useState, type FormEvent } from "react";
 import { Loader2, UserPlus } from "lucide-react";
 
 import { PhoneField } from "@/components/admin/PhoneField";
-import { SearchCombobox } from "@/components/admin/SearchCombobox";
+import { CheckboxGroup, TriStateSelect } from "@/components/matching/MatchingProfileFields";
 import { withBasePath } from "@/lib/basePath";
+import {
+  isPsychotherapyArea,
+  PSYCHOTHERAPY_APPROACHES,
+  PSYCHOTHERAPY_SPECIALTIES
+} from "@/lib/matchingProfile";
 import { isValidBrazilianMobile } from "@/lib/phone";
 
 type Props = {
@@ -22,6 +27,11 @@ export function PatientForm({ activeAreas, onCancel, onSuccess }: Props) {
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [area, setArea] = useState<string | null>(null);
+  const [psychotherapyApproach, setPsychotherapyApproach] = useState("");
+  const [psychotherapySpecialties, setPsychotherapySpecialties] = useState<string[]>([]);
+  const [preferredGender, setPreferredGender] = useState("");
+  const [preferredRace, setPreferredRace] = useState("");
+  const [prefersLgbtqiapnPlus, setPrefersLgbtqiapnPlus] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +48,7 @@ export function PatientForm({ activeAreas, onCancel, onSuccess }: Props) {
     }
 
     setSubmitting(true);
+    const psychotherapy = isPsychotherapyArea(area);
     try {
       const response = await fetch(withBasePath("/api/admin/registrations/patient"), {
         method: "POST",
@@ -46,7 +57,16 @@ export function PatientForm({ activeAreas, onCancel, onSuccess }: Props) {
           name,
           phone_number: phone,
           area,
-          ...(birthDate ? { birth_date: birthDate } : {})
+          birth_date: birthDate || null,
+          psychotherapy_approach: psychotherapy
+            ? psychotherapyApproach || null
+            : null,
+          psychotherapy_specialties: psychotherapy
+            ? psychotherapySpecialties
+            : [],
+          preferred_gender: preferredGender || null,
+          preferred_race: preferredRace || null,
+          prefers_lgbtqiapn_plus: prefersLgbtqiapnPlus
         })
       });
       const body = (await response.json()) as { error?: string };
@@ -73,7 +93,46 @@ export function PatientForm({ activeAreas, onCancel, onSuccess }: Props) {
           <input id="patient-birth-date" type="date" value={birthDate} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setBirthDate(event.target.value)} className={inputClass} />
         </div>
       </div>
-      <SearchCombobox id="patient-area" label="Área desejada" placeholder="Pesquise uma área disponível" options={activeAreas} selected={area} getKey={(option) => option} getLabel={(option) => option} onSelect={setArea} onClear={() => setArea(null)} emptyMessage="Nenhuma área com saldo de ciclo corresponde à busca." required />
+      <div>
+        <label htmlFor="patient-area" className={labelClass}>Área desejada *</label>
+        <select id="patient-area" value={area ?? ""} onChange={(event) => setArea(event.target.value || null)} className={inputClass} required>
+          <option value="">Selecione uma área disponível</option>
+          {activeAreas.map((activeArea) => <option key={activeArea} value={activeArea}>{activeArea}</option>)}
+        </select>
+      </div>
+      {area && isPsychotherapyArea(area) ? (
+        <section className="space-y-4 rounded-xl border border-sage/20 bg-sage/5 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-ink">Preferências de psicoterapia</h3>
+            <p className="mt-1 text-xs text-ink/55">Essas escolhas ajudam a priorizar profissionais compatíveis, mas não restringem o atendimento.</p>
+          </div>
+          <div>
+            <label htmlFor="patient-psychotherapy-approach" className={labelClass}>Abordagem</label>
+            <select id="patient-psychotherapy-approach" value={psychotherapyApproach} onChange={(event) => setPsychotherapyApproach(event.target.value)} className={inputClass}>
+              <option value="">Sem preferência</option>
+              {PSYCHOTHERAPY_APPROACHES.map((approach) => <option key={approach} value={approach}>{approach}</option>)}
+            </select>
+          </div>
+          <CheckboxGroup legend="Especialidades procuradas (selecione uma ou mais)" options={PSYCHOTHERAPY_SPECIALTIES} selected={psychotherapySpecialties} onChange={setPsychotherapySpecialties} />
+        </section>
+      ) : null}
+      <section className="space-y-4 rounded-xl border border-black/10 p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-ink">Preferências de profissional</h3>
+          <p className="mt-1 text-xs text-ink/55">Todos os campos são opcionais e usados apenas para priorização.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="patient-preferred-gender" className={labelClass}>Gênero</label>
+            <input id="patient-preferred-gender" value={preferredGender} onChange={(event) => setPreferredGender(event.target.value)} placeholder="Ex.: Mulher" className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="patient-preferred-race" className={labelClass}>Raça</label>
+            <input id="patient-preferred-race" value={preferredRace} onChange={(event) => setPreferredRace(event.target.value)} placeholder="Ex.: Negra" className={inputClass} />
+          </div>
+          <TriStateSelect id="patient-prefers-lgbtqiapn" label="Profissional LGBTQIAPN+" value={prefersLgbtqiapnPlus} onChange={setPrefersLgbtqiapnPlus} emptyLabel="Sem preferência" />
+        </div>
+      </section>
       {activeAreas.length === 0 ? <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Não há área com ciclo vigente e paciente pendente.</p> : null}
       {error ? <p role="alert" className="rounded-lg border border-coral/25 bg-coral/10 p-3 text-sm text-coral">{error}</p> : null}
       <div className="flex flex-wrap justify-end gap-2 border-t border-black/10 pt-4">

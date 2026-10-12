@@ -22,8 +22,8 @@ export function ProfessionalTable({ professionals, selectedId, onSelect }: Props
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-black/10 bg-white shadow-subtle">
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-        <table className="w-full table-fixed text-left text-sm">
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table className="w-full min-w-[980px] table-fixed text-left text-sm">
           <thead className="border-b border-black/10 bg-mist/80 text-xs uppercase tracking-wide text-ink/45">
             <tr>
               <th className="px-4 py-3 font-semibold">Profissional</th>
@@ -61,7 +61,8 @@ export function ProfessionalTable({ professionals, selectedId, onSelect }: Props
                 >
                   <td className="px-4 py-3">
                     <div className="font-semibold text-ink">{professional.name}</div>
-                    <div className="mt-0.5 text-xs text-ink/50">{professional.area}</div>
+                    {professional.matching_profile.areas.length > 0 ? <div className="mt-0.5 text-xs text-ink/50">{professional.matching_profile.areas.join(", ")}</div> : null}
+                    {professional.matching_profile.psychotherapy.approaches.length > 0 ? <div className="mt-0.5 text-xs text-ink/50">{professional.matching_profile.psychotherapy.approaches.join(", ")}</div> : null}
                   </td>
                   <td className="px-4 py-3">
                     <ProfessionalStatusBadge active={professional.is_active} overdue={professional.has_overdue} />

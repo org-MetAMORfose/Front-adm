@@ -25,6 +25,7 @@ model patient {
   psychotherapy_approach String?                @db.VarChar
   professional_profile   String?                @db.VarChar
   price_range            String?                @db.VarChar
+  matching_request       Json                   @default("{}")
   person                 person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   matching_slot          matching_slot[]
 }
@@ -59,6 +60,7 @@ model professional {
   created_at            DateTime               @db.Timestamp(6)
   gender                String?                @db.VarChar
   minority_group        String?                @db.VarChar
+  matching_profile      Json                   @default("{}")
   matching_cycle        matching_cycle[]
   person                person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
