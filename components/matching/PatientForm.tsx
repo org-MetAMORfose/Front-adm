@@ -8,6 +8,8 @@ import { CheckboxGroup, TriStateSelect } from "@/components/matching/MatchingPro
 import { withBasePath } from "@/lib/basePath";
 import {
   isPsychotherapyArea,
+  PROFESSIONAL_GENDERS,
+  PROFESSIONAL_RACES,
   PSYCHOTHERAPY_APPROACHES,
   PSYCHOTHERAPY_SPECIALTIES
 } from "@/lib/matchingProfile";
@@ -124,11 +126,17 @@ export function PatientForm({ activeAreas, onCancel, onSuccess }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="patient-preferred-gender" className={labelClass}>Gênero</label>
-            <input id="patient-preferred-gender" value={preferredGender} onChange={(event) => setPreferredGender(event.target.value)} placeholder="Ex.: Mulher" className={inputClass} />
+            <select id="patient-preferred-gender" value={preferredGender} onChange={(event) => setPreferredGender(event.target.value)} className={inputClass}>
+              <option value="">Sem preferência</option>
+              {PROFESSIONAL_GENDERS.map((gender) => <option key={gender} value={gender}>{gender}</option>)}
+            </select>
           </div>
           <div>
             <label htmlFor="patient-preferred-race" className={labelClass}>Raça</label>
-            <input id="patient-preferred-race" value={preferredRace} onChange={(event) => setPreferredRace(event.target.value)} placeholder="Ex.: Negra" className={inputClass} />
+            <select id="patient-preferred-race" value={preferredRace} onChange={(event) => setPreferredRace(event.target.value)} className={inputClass}>
+              <option value="">Sem preferência</option>
+              {PROFESSIONAL_RACES.map((race) => <option key={race} value={race}>{race}</option>)}
+            </select>
           </div>
           <TriStateSelect id="patient-prefers-lgbtqiapn" label="Profissional LGBTQIAPN+" value={prefersLgbtqiapnPlus} onChange={setPrefersLgbtqiapnPlus} emptyLabel="Sem preferência" />
         </div>

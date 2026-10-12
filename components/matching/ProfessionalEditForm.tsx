@@ -26,11 +26,7 @@ export function ProfessionalEditForm({ professional, knownAreas, onCancel, onSuc
   const [background, setBackground] = useState(professional.background ?? "");
   const [videoPlatform, setVideoPlatform] = useState(professional.video_platform ?? "");
   const [profile, setProfile] = useState<ProfessionalProfileDraft>({
-    areas: uniqueAreas(
-      professional.matching_profile.areas.length > 0
-        ? professional.matching_profile.areas
-        : [professional.area]
-    ),
+    areas: uniqueAreas(professional.matching_profile.areas),
     approaches: professional.matching_profile.psychotherapy.approaches,
     specialties: professional.matching_profile.psychotherapy.specialties,
     gender: professional.matching_profile.profile.gender ?? "",

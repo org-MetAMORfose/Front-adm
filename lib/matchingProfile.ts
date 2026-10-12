@@ -2,6 +2,8 @@ import type { ProfessionalMatchingProfile } from "@/types/matching";
 
 export const PSYCHOTHERAPY_AREA = "Psicoterapia";
 export const PSYCHOTHERAPY_APPROACHES = ["TCC", "Psicanálise"] as const;
+export const PROFESSIONAL_GENDERS = ["Mulher", "Homem"] as const;
+export const PROFESSIONAL_RACES = ["Negra"] as const;
 export const PSYCHOTHERAPY_SPECIALTIES = [
   "Autismo",
   "TDAH",
@@ -71,41 +73,24 @@ export function uniqueAreas(areas: string[]) {
 }
 
 export function normalizeMatchingProfile(
-  value: unknown,
-  fallback: {
-    area: string;
-    approach?: string | null;
-    gender?: string | null;
-    minorityGroup?: string | null;
-  }
+  value: unknown
 ): ProfessionalMatchingProfile {
   const source = record(value);
   const psychotherapy = record(source.psychotherapy);
   const profile = record(source.profile);
   const areas = strings(source.areas);
-  const legacyRace = fallback.minorityGroup?.toLocaleLowerCase("pt-BR").includes("negr")
-    ? "Negra"
-    : null;
-  const legacyLgbt = fallback.minorityGroup?.toLocaleLowerCase("pt-BR").includes("lgbt")
-    ? true
-    : null;
-
   return {
     schema_version:
       typeof source.schema_version === "number" ? source.schema_version : 1,
-    areas: areas.length > 0 ? areas : [fallback.area],
+    areas,
     psychotherapy: {
-      approaches: strings(psychotherapy.approaches).length > 0
-        ? strings(psychotherapy.approaches)
-        : fallback.approach
-          ? [fallback.approach]
-          : [],
+      approaches: strings(psychotherapy.approaches),
       specialties: normalizePsychotherapySpecialties(psychotherapy.specialties)
     },
     profile: {
-      gender: text(profile.gender) ?? fallback.gender ?? null,
-      race: text(profile.race) ?? legacyRace,
-      lgbtqiapn_plus: booleanOrNull(profile.lgbtqiapn_plus) ?? legacyLgbt
+      gender: text(profile.gender),
+      race: text(profile.race),
+      lgbtqiapn_plus: booleanOrNull(profile.lgbtqiapn_plus)
     }
   };
 }

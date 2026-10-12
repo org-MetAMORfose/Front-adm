@@ -127,10 +127,6 @@ export async function POST(request: Request) {
   const now = new Date();
   const availableProfessionals = await prisma.professional.findMany({
     select: {
-      area: true,
-      approach: true,
-      gender: true,
-      minority_group: true,
       matching_profile: true,
       matching_cycle: {
         where: {
@@ -151,13 +147,7 @@ export async function POST(request: Request) {
         (cycle) => cycle._count.matching_slot < cycle.promised_patients
       ))
       .flatMap((professional) => normalizeMatchingProfile(
-        professional.matching_profile,
-        {
-          area: professional.area,
-          approach: professional.approach,
-          gender: professional.gender,
-          minorityGroup: professional.minority_group
-        }
+        professional.matching_profile
       ).areas.map(normalizeSearch))
   );
   const unavailableAreas = [...new Set(

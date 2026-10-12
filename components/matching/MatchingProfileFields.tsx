@@ -5,6 +5,8 @@ import { Plus, X } from "lucide-react";
 
 import {
   hasPsychotherapyArea,
+  PROFESSIONAL_GENDERS,
+  PROFESSIONAL_RACES,
   PSYCHOTHERAPY_APPROACHES,
   PSYCHOTHERAPY_SPECIALTIES,
   uniqueAreas
@@ -155,11 +157,17 @@ export function ProfessionalMatchingFields({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor={`${idPrefix}-gender`} className={labelClass}>Gênero</label>
-          <input id={`${idPrefix}-gender`} value={value.gender} onChange={(event) => onChange({ ...value, gender: event.target.value })} placeholder="Ex.: Mulher ou Homem" className={inputClass} />
+          <select id={`${idPrefix}-gender`} value={value.gender} onChange={(event) => onChange({ ...value, gender: event.target.value })} className={inputClass}>
+            <option value="">Não informado</option>
+            {PROFESSIONAL_GENDERS.map((gender) => <option key={gender} value={gender}>{gender}</option>)}
+          </select>
         </div>
         <div>
           <label htmlFor={`${idPrefix}-race`} className={labelClass}>Raça</label>
-          <input id={`${idPrefix}-race`} value={value.race} onChange={(event) => onChange({ ...value, race: event.target.value })} placeholder="Ex.: Negra" className={inputClass} />
+          <select id={`${idPrefix}-race`} value={value.race} onChange={(event) => onChange({ ...value, race: event.target.value })} className={inputClass}>
+            <option value="">Não informado</option>
+            {PROFESSIONAL_RACES.map((race) => <option key={race} value={race}>{race}</option>)}
+          </select>
         </div>
         <TriStateSelect id={`${idPrefix}-lgbtqiapn`} label="Identificação LGBTQIAPN+" value={value.lgbtqiapnPlus} onChange={(lgbtqiapnPlus) => onChange({ ...value, lgbtqiapnPlus })} />
       </div>

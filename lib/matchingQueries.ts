@@ -52,12 +52,7 @@ export async function getDistributionData(): Promise<DistributionData> {
   const activeAreas = new Set<string>();
 
   const professionalItems = professionals.map((professional) => {
-    const matchingProfile = normalizeMatchingProfile(professional.matching_profile, {
-      area: professional.area,
-      approach: professional.approach,
-      gender: professional.gender,
-      minorityGroup: professional.minority_group
-    });
+    const matchingProfile = normalizeMatchingProfile(professional.matching_profile);
     const validCycles = professional.matching_cycle.filter(
       (cycle) => cycle.cancelled_at === null
     );
@@ -122,7 +117,7 @@ export async function getDistributionData(): Promise<DistributionData> {
       person_id: professional.person_id,
       name: professional.person.name?.trim() || "Sem nome",
       phone_number: professional.person.phone_number,
-      area: professional.area,
+      area: matchingProfile.areas[0] ?? "",
       professional_register: professional.professional_register,
       matching_profile: matchingProfile,
       is_active: hasActiveCycle,
@@ -159,12 +154,7 @@ export async function getDistributionData(): Promise<DistributionData> {
       left.localeCompare(right, "pt-BR")
     ),
     known_areas: [...new Set(professionals.flatMap((professional) =>
-      normalizeMatchingProfile(professional.matching_profile, {
-        area: professional.area,
-        approach: professional.approach,
-        gender: professional.gender,
-        minorityGroup: professional.minority_group
-      }).areas
+      normalizeMatchingProfile(professional.matching_profile).areas
     ))].sort(
       (left, right) => left.localeCompare(right, "pt-BR")
     ),
@@ -194,12 +184,7 @@ export async function getProfessionalDetail(
 
   if (!professional) return null;
 
-  const matchingProfile = normalizeMatchingProfile(professional.matching_profile, {
-    area: professional.area,
-    approach: professional.approach,
-    gender: professional.gender,
-    minorityGroup: professional.minority_group
-  });
+  const matchingProfile = normalizeMatchingProfile(professional.matching_profile);
 
   let promised = 0;
   let delivered = 0;
@@ -273,7 +258,7 @@ export async function getProfessionalDetail(
     phone_number: professional.person.phone_number,
     cpf: professional.person.cpf,
     birth_date: professional.person.birth_date?.toISOString() ?? null,
-    area: professional.area,
+    area: matchingProfile.areas[0] ?? "",
     professional_register: professional.professional_register,
     email: professional.email,
     approach: professional.approach,
@@ -305,7 +290,7 @@ export async function getProfessionalOptions() {
     person_id: professional.person_id,
     name: professional.person.name?.trim() || "Sem nome",
     phone_number: professional.person.phone_number,
-    area: professional.area,
+    area: normalizeMatchingProfile(professional.matching_profile).areas[0] ?? "",
     professional_register: professional.professional_register
   }));
 }
