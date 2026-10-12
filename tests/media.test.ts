@@ -30,6 +30,7 @@ describe("media paths", () => {
   it("classifies supported media paths", () => {
     expect(getMediaType("media/image/photo.jpg")).toBe("image");
     expect(getMediaType("media/video/recording.mp4")).toBe("video");
+    expect(getMediaType("media/audio/voice-note.ogg")).toBe("audio");
     expect(getMediaType("media/document/file.pdf")).toBe("document");
     expect(getMediaType("other/file.jpg")).toBeNull();
   });
@@ -37,6 +38,7 @@ describe("media paths", () => {
   it("rejects URLs and path traversal", () => {
     expect(isValidMediaPath("media/image/photo.jpg")).toBe(true);
     expect(isValidMediaPath("media/video/recording.mp4")).toBe(true);
+    expect(isValidMediaPath("media/audio/voice-note.ogg")).toBe(true);
     expect(isValidMediaPath("https://example.com/photo.jpg")).toBe(false);
     expect(isValidMediaPath("media/image/../secret.jpg")).toBe(false);
   });
@@ -104,6 +106,37 @@ describe("GET message media", () => {
     );
     expect(mocks.getS3Media).toHaveBeenCalledWith(
       "media/video/recording.mp4"
+    );
+  });
+
+  it("streams audio using its S3 content type", async () => {
+    mocks.findUnique.mockResolvedValue({
+      media_path: "media/audio/voice-note.ogg"
+    });
+    mocks.getS3Media.mockResolvedValue({
+      Body: {
+        transformToWebStream: vi.fn().mockReturnValue(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array([7, 8, 9]));
+              controller.close();
+            }
+          })
+        )
+      },
+      ContentLength: 3,
+      ContentType: "audio/ogg"
+    });
+
+    const response = await callGetMedia("44");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("audio/ogg");
+    expect(response.headers.get("content-disposition")).toContain(
+      "voice-note.ogg"
+    );
+    expect(mocks.getS3Media).toHaveBeenCalledWith(
+      "media/audio/voice-note.ogg"
     );
   });
 

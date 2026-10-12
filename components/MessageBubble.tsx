@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, FileText, Play } from "lucide-react";
+import React from "react";
 import { useState } from "react";
 
 import { withBasePath } from "@/lib/basePath";
@@ -87,6 +88,17 @@ export function MessageBubble({ message, onImageClick }: Props) {
               </video>
             )}
           </div>
+        ) : null}
+
+        {message.media_type === "audio" ? (
+          <audio
+            src={mediaUrl}
+            controls
+            preload="metadata"
+            className="mt-2 w-full min-w-64"
+          >
+            Seu navegador não suporta a reprodução de áudios.
+          </audio>
         ) : null}
 
         {message.media_type === "video" ? (
