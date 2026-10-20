@@ -75,8 +75,10 @@ export function PatientBatchForm({ activeAreas, knownAreas, onCancel, onSuccess 
               phone_number: patient.phone_number,
               area: patient.area,
               birth_date: patient.birth_date,
-              ...(patient.psychotherapy_approach ? { psychotherapy_approach: patient.psychotherapy_approach } : {}),
-              professional_profile: "Sem preferência"
+              psychotherapy_approach: patient.psychotherapy_approach || null,
+              psychotherapy_specialties: patient.psychotherapy_specialties,
+              preferred_gender: patient.preferred_gender,
+              preferred_race: patient.preferred_race
             }))
           })
         }
@@ -94,7 +96,7 @@ export function PatientBatchForm({ activeAreas, knownAreas, onCancel, onSuccess 
   return (
     <form onSubmit={submit} className="space-y-5 p-5 sm:p-6">
       <div className="rounded-lg border border-sage/20 bg-sage/5 p-3 text-sm text-ink/65">
-        Copie as linhas no Google Sheets e cole abaixo. O cabeçalho e uma coluna inicial de data e hora são ignorados. A lista será validada antes do envio.
+        Copie as linhas no Google Sheets e cole abaixo, sem precisar do cabeçalho. Se ele vier, será ignorado. Confira os dados e as preferências antes do envio.
       </div>
 
       <div>
@@ -109,12 +111,12 @@ export function PatientBatchForm({ activeAreas, knownAreas, onCancel, onSuccess 
             setError(null);
           }}
           rows={7}
-          wrap="off"
+          wrap="soft"
           className={`${inputClass} resize-y font-mono`}
-          placeholder={'30/09/2026 15:44:46\tArthur\t\t5511974527717\tPsicoterapia\t01/01/2000'}
+          placeholder={'19/10/2026 20:45:15\tAna\t\t5511999999999\tPsicoterapia\t\t\t\t\t\tAté R$150\t01/01/2000\tNegro\tMulher\tPsicoterapia TCC\tDeclaro que as informações são verdadeiras\t\tLGBTQIAPN+, Ansiedade'}
         />
         <p className="mt-1.5 text-xs text-ink/45">
-          Formato reconhecido: nome, e-mail opcional, celular, área e nascimento opcional. Aceita celular com oito ou nove dígitos e exibe no formato brasileiro.
+          Aceita a planilha completa ou linhas compactas, incluindo células com quebras de linha copiadas do Sheets. Abordagem, gênero, autodeclaração e especialidades são opcionais. A faixa de pagamento é ignorada no matching.
         </p>
       </div>
 
@@ -125,9 +127,9 @@ export function PatientBatchForm({ activeAreas, knownAreas, onCancel, onSuccess 
             <span className="text-xs text-ink/50">{patients.length} paciente(s)</span>
           </div>
           <div className="max-h-64 overflow-auto">
-            <table className="min-w-[760px] w-full text-left text-xs">
+            <table className="min-w-[1100px] w-full table-fixed text-left text-xs [&_td]:whitespace-normal [&_td]:break-words [&_td]:align-top">
               <thead className="sticky top-0 bg-white text-ink/45">
-                <tr><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Celular</th><th className="px-3 py-2">Área</th><th className="px-3 py-2">Nascimento</th><th className="px-3 py-2">Validação</th></tr>
+                <tr><th className="w-[12%] px-3 py-2">Nome</th><th className="w-[12%] px-3 py-2">Celular</th><th className="w-[12%] px-3 py-2">Área / abordagem</th><th className="w-[9%] px-3 py-2">Nascimento</th><th className="w-[10%] px-3 py-2">Gênero</th><th className="w-[10%] px-3 py-2">Autodeclaração</th><th className="w-[22%] px-3 py-2">Especialidades</th><th className="w-[13%] px-3 py-2">Validação</th></tr>
               </thead>
               <tbody className="divide-y divide-black/5">
                 {patients.map((patient) => (
@@ -139,6 +141,9 @@ export function PatientBatchForm({ activeAreas, knownAreas, onCancel, onSuccess 
                       {patient.psychotherapy_approach ? <span className="block text-ink/40">{patient.psychotherapy_approach}</span> : null}
                     </td>
                     <td className="px-3 py-2 text-ink/65">{displayBirthDate(patient.birth_date)}</td>
+                    <td className="px-3 py-2 text-ink/65">{patient.preferred_gender || "Sem preferência"}</td>
+                    <td className="px-3 py-2 text-ink/65">{patient.preferred_race || "Sem preferência"}</td>
+                    <td className="px-3 py-2 text-ink/65">{patient.psychotherapy_specialties.join(", ") || "Sem preferência"}</td>
                     <td className={`px-3 py-2 ${patient.errors.length > 0 ? "text-coral" : "font-medium text-emerald-700"}`}>
                       {patient.errors.length > 0 ? patient.errors.join(" · ") : "Pronto"}
                     </td>

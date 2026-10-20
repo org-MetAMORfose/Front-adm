@@ -1,4 +1,3 @@
-import { formatBooleanPreference } from "@/lib/matchingProfile";
 import type { ProfessionalMatchingProfile } from "@/types/matching";
 
 function Value({ label, value }: { label: string; value: string }) {
@@ -17,8 +16,7 @@ export function MatchingProfileView({ profile }: { profile: ProfessionalMatching
       <Value label="Abordagens" value={profile.psychotherapy.approaches.join(", ")} />
       <Value label="Especialidades" value={profile.psychotherapy.specialties.join(", ")} />
       <Value label="Gênero" value={profile.profile.gender ?? ""} />
-      <Value label="Raça" value={profile.profile.race ?? ""} />
-      <Value label="LGBTQIAPN+" value={formatBooleanPreference(profile.profile.lgbtqiapn_plus)} />
+      <Value label="Autodeclaração" value={profile.profile.race ?? ""} />
     </dl>
   );
 }

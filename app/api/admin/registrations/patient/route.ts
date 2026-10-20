@@ -6,8 +6,10 @@ import { isValidPastDateOnly, normalizeSearch } from "@/lib/matchingDomain";
 import {
   isPsychotherapyArea,
   normalizeMatchingProfile,
-  PSYCHOTHERAPY_APPROACHES,
-  PSYCHOTHERAPY_SPECIALTIES
+  normalizePsychotherapyApproach,
+  normalizePsychotherapySpecialties,
+  normalizeProfessionalGender,
+  normalizeProfessionalDeclaration
 } from "@/lib/matchingProfile";
 import { isValidBrazilianMobile, normalizeBrazilianPhone } from "@/lib/phone";
 import type { PatientRegistrationPayload } from "@/types/matching";
@@ -30,33 +32,21 @@ function validatePatient(body: Record<string, unknown>, row: number) {
   const birthDate = text(body, "birth_date");
   const area = text(body, "area");
   const psychotherapy = isPsychotherapyArea(area);
-  const psychotherapyApproach = psychotherapy
-    ? text(body, "psychotherapy_approach") || null
-    : null;
+  const rawApproach = psychotherapy ? text(body, "psychotherapy_approach") : "";
+  const psychotherapyApproach = normalizePsychotherapyApproach(rawApproach);
   const psychotherapySpecialties = psychotherapy
-    ? stringList(body, "psychotherapy_specialties")
+    ? normalizePsychotherapySpecialties(stringList(body, "psychotherapy_specialties"))
     : [];
-  const preferredGender = text(body, "preferred_gender") || null;
-  const preferredRace = text(body, "preferred_race") || null;
-  const rawLgbtPreference = body.prefers_lgbtqiapn_plus;
-  const prefersLgbtqiapnPlus = typeof rawLgbtPreference === "boolean"
-    ? rawLgbtPreference
-    : null;
+  const preferredGender = normalizeProfessionalGender(text(body, "preferred_gender"));
+  const preferredRace = normalizeProfessionalDeclaration(text(body, "preferred_race"));
   const errors: string[] = [];
 
   if (name.length < 2) errors.push("nome inválido");
   if (!isValidBrazilianMobile(rawPhone)) errors.push("celular inválido");
   if (birthDate && !isValidPastDateOnly(birthDate)) errors.push("nascimento inválido");
   if (!area) errors.push("área ausente");
-  if (psychotherapyApproach && !PSYCHOTHERAPY_APPROACHES.includes(
-    psychotherapyApproach as (typeof PSYCHOTHERAPY_APPROACHES)[number]
-  )) errors.push("abordagem de psicoterapia inválida");
-  if (psychotherapySpecialties.some((specialty) => !PSYCHOTHERAPY_SPECIALTIES.includes(
-    specialty as (typeof PSYCHOTHERAPY_SPECIALTIES)[number]
-  ))) errors.push("especialidade de psicoterapia inválida");
-  if (rawLgbtPreference !== undefined && rawLgbtPreference !== null
-    && rawLgbtPreference !== "" && typeof rawLgbtPreference !== "boolean") {
-    errors.push("preferência LGBTQIAPN+ inválida");
+  if (rawApproach && normalizeSearch(rawApproach).replace(/\s+/g, " ") !== "sem preferencia" && !psychotherapyApproach) {
+    errors.push("abordagem de psicoterapia inválida");
   }
 
   return {
@@ -72,8 +62,7 @@ function validatePatient(body: Record<string, unknown>, row: number) {
       psychotherapy_approach: psychotherapyApproach,
       psychotherapy_specialties: psychotherapySpecialties,
       preferred_gender: preferredGender,
-      preferred_race: preferredRace,
-      prefers_lgbtqiapn_plus: prefersLgbtqiapnPlus
+      preferred_race: preferredRace
     } satisfies PatientRegistrationPayload
   };
 }

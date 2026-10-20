@@ -5,7 +5,7 @@ import { isValidPastDateOnly, PROFESSIONAL_BACKGROUND_MAX_LENGTH } from "@/lib/m
 import {
   hasPsychotherapyArea,
   PSYCHOTHERAPY_APPROACHES,
-  PSYCHOTHERAPY_SPECIALTIES,
+  normalizePsychotherapySpecialties,
   uniqueAdditionalAreas
 } from "@/lib/matchingProfile";
 import { isValidBrazilianMobile, normalizeBrazilianPhone } from "@/lib/phone";
@@ -55,7 +55,7 @@ function parseProfessionalRegistration(
   const psychotherapy = hasPsychotherapyArea([area, ...areas]);
   const approaches = psychotherapy ? stringList(value, "approaches") : [];
   const psychotherapySpecialties = psychotherapy
-    ? stringList(value, "psychotherapy_specialties")
+    ? normalizePsychotherapySpecialties(stringList(value, "psychotherapy_specialties"))
     : [];
   const race = text(value, "race") || null;
   const rawLgbtqiapnPlus = value.lgbtqiapn_plus;
@@ -80,9 +80,6 @@ function parseProfessionalRegistration(
   if (approaches.some((approach) => !PSYCHOTHERAPY_APPROACHES.includes(
     approach as (typeof PSYCHOTHERAPY_APPROACHES)[number]
   ))) return { ok: false, error: "Informe somente abordagens válidas." };
-  if (psychotherapySpecialties.some((specialty) => !PSYCHOTHERAPY_SPECIALTIES.includes(
-    specialty as (typeof PSYCHOTHERAPY_SPECIALTIES)[number]
-  ))) return { ok: false, error: "Informe somente especialidades válidas." };
   if (rawLgbtqiapnPlus !== undefined && rawLgbtqiapnPlus !== null
     && rawLgbtqiapnPlus !== "" && typeof rawLgbtqiapnPlus !== "boolean") {
     return { ok: false, error: "Informe uma identificação LGBTQIAPN+ válida." };

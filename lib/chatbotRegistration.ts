@@ -89,8 +89,7 @@ export function registerPatientsThroughChatbot(payloads: PatientRegistrationPayl
     psychotherapy_approach: payload.psychotherapy_approach,
     psychotherapy_specialties: payload.psychotherapy_specialties,
     preferred_gender: payload.preferred_gender,
-    preferred_race: payload.preferred_race,
-    prefers_lgbtqiapn_plus: payload.prefers_lgbtqiapn_plus
+    preferred_race: payload.preferred_race
   }));
   return request(`${chatbotBaseUrl()}/patients`, {
     method: "POST",

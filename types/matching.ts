@@ -128,7 +128,6 @@ export type PatientRegistrationPayload = {
   psychotherapy_specialties: string[];
   preferred_gender: string | null;
   preferred_race: string | null;
-  prefers_lgbtqiapn_plus: boolean | null;
 };
 
 export type ProfessionalRegistrationPayload = {
