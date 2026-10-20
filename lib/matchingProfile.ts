@@ -2,15 +2,25 @@ import type { ProfessionalMatchingProfile } from "@/types/matching";
 
 export const PSYCHOTHERAPY_AREA = "Psicoterapia";
 export const PSYCHOTHERAPY_APPROACHES = ["TCC", "Psicanálise"] as const;
-export const PROFESSIONAL_GENDERS = ["Mulher", "Homem"] as const;
-export const PROFESSIONAL_RACES = ["Negra"] as const;
+export const PROFESSIONAL_GENDERS = ["Mulher", "Homem", "Não binário"] as const;
+export const PROFESSIONAL_RACES = ["Negra", "Branca", "Indígena", "Asiática", "Imigrante"] as const;
 export const PSYCHOTHERAPY_SPECIALTIES = [
+  "LGBTQIAPN+",
+  "Burnout",
+  "Orientação Profissional",
+  "Casal",
+  "Família",
+  "Crianças",
+  "Adolescentes",
+  "Saúde 60+",
+  "Imigrantes",
   "Autismo",
   "TDAH",
   "Transtorno Bipolar",
   "Transtorno de Personalidade Borderline",
   "Ansiedade",
-  "Depressão"
+  "Depressão",
+  "Supervisão de Psicoterapia (Psi para psi)"
 ] as const;
 
 function record(value: unknown): Record<string, unknown> {
@@ -30,12 +40,14 @@ function strings(value: unknown): string[] {
 
 const SPECIALTY_ALIASES: Record<string, string> = {
   bipolaridade: "Transtorno Bipolar",
-  borderline: "Transtorno de Personalidade Borderline"
+  borderline: "Transtorno de Personalidade Borderline",
+  boderline: "Transtorno de Personalidade Borderline"
 };
 
 export function normalizePsychotherapySpecialties(value: unknown): string[] {
-  const normalized = strings(value).map(
-    (specialty) => SPECIALTY_ALIASES[key(specialty)] ?? specialty
+  const lookup = new Map(PSYCHOTHERAPY_SPECIALTIES.map((specialty) => [key(specialty), specialty]));
+  const normalized = strings(value).map((specialty) =>
+    SPECIALTY_ALIASES[key(specialty)] ?? lookup.get(key(specialty)) ?? specialty.replace(/\s+/g, " ")
   );
   return normalized.filter((specialty, index) =>
     normalized.findIndex((candidate) => key(candidate) === key(specialty)) === index
@@ -51,7 +63,26 @@ function key(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
+    .replace(/\s+/g, " ")
     .toLocaleLowerCase("pt-BR");
+}
+
+export function normalizePsychotherapyApproach(value: string): string | null {
+  return ({ tcc: "TCC", "psicoterapia tcc": "TCC", psicanalise: "Psicanálise" } as Record<string, string>)[key(value)] ?? null;
+}
+
+export function normalizeProfessionalGender(value: string): string | null {
+  if (["", "sem preferencia", "prefiro nao informar"].includes(key(value))) return null;
+  return ({ feminino: "Mulher", mulher: "Mulher", masculino: "Homem", homem: "Homem",
+    "nao binario": "Não binário", "nao binaria": "Não binário", "nao-binario": "Não binário"
+  } as Record<string, string>)[key(value)] ?? value.trim();
+}
+
+export function normalizeProfessionalDeclaration(value: string): string | null {
+  if (["", "sem preferencia", "prefiro nao informar"].includes(key(value))) return null;
+  return ({ negro: "Negra", negra: "Negra", branco: "Branca", branca: "Branca", indigena: "Indígena",
+    asiatico: "Asiática", asiatica: "Asiática", imigrante: "Imigrante"
+  } as Record<string, string>)[key(value)] ?? value.trim();
 }
 
 export function isPsychotherapyArea(value: string) {
@@ -88,8 +119,8 @@ export function normalizeMatchingProfile(
       specialties: normalizePsychotherapySpecialties(psychotherapy.specialties)
     },
     profile: {
-      gender: text(profile.gender),
-      race: text(profile.race),
+      gender: normalizeProfessionalGender(text(profile.gender) ?? ""),
+      race: normalizeProfessionalDeclaration(text(profile.race) ?? ""),
       lgbtqiapn_plus: booleanOrNull(profile.lgbtqiapn_plus)
     }
   };

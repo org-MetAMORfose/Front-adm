@@ -201,7 +201,7 @@ export default function DistributionPage() {
         ) : null}
       </div>
 
-      <Modal open={modal === "patient"} title="Adicionar pacientes" description="Cadastre uma pessoa ou valide várias linhas copiadas de uma planilha." size={patientMode === "spreadsheet" ? "wide" : "default"} onClose={() => setModal(null)}>
+      <Modal open={modal === "patient"} title="Adicionar pacientes" description="Cadastre uma pessoa ou valide várias linhas copiadas de uma planilha." size={patientMode === "spreadsheet" ? "spreadsheet" : "wide"} onClose={() => setModal(null)}>
         <div className="grid grid-cols-2 gap-2 border-b border-black/10 px-5 pt-4 sm:px-6">
           <button
             type="button"

@@ -5,6 +5,7 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PatientForm } from "@/components/matching/PatientForm";
+import { PatientBatchForm } from "@/components/matching/PatientBatchForm";
 import { ProfessionalEditForm } from "@/components/matching/ProfessionalEditForm";
 import { ProfessionalForm } from "@/components/matching/ProfessionalForm";
 import { ProfessionalSummary } from "@/components/matching/ProfessionalSummary";
@@ -29,6 +30,25 @@ afterEach(() => {
 });
 
 describe("registration forms", () => {
+  it("previews and submits spreadsheet preferences without payment or identity", async () => {
+    const fetchMock = successfulFetch();
+    render(<PatientBatchForm activeAreas={["Psicoterapia"]} knownAreas={["Psicoterapia"]} onCancel={vi.fn()} onSuccess={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Linhas da planilha *"), { target: { value:
+      ["19/10/2026 20:45:15", "Ana Souza", "", "5511999999999", "Psicoterapia", "", "", "", "", "",
+        "Até R$150", "01/01/2000", "Negro", "Não binário", "Psicoterapia TCC", "Declaro que as informações são verdadeiras", "", '"LGBTQIAPN+,\nLuto"', "", ""].join("\t")
+    } });
+    expect(screen.getByText("LGBTQIAPN+, Luto")).toBeTruthy();
+    expect(screen.getByText("Negra")).toBeTruthy();
+    expect(screen.getByText("Não binário")).toBeTruthy();
+    expect(screen.getByLabelText("Linhas da planilha *").getAttribute("wrap")).toBe("soft");
+    fireEvent.click(screen.getByRole("button", { name: "Enviar 1 paciente(s)" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(requestBody(fetchMock)).toEqual({ patients: [{
+      name: "Ana Souza", phone_number: "5511999999999", area: "Psicoterapia", birth_date: "2000-01-01",
+      psychotherapy_approach: "TCC", psychotherapy_specialties: ["LGBTQIAPN+", "Luto"],
+      preferred_gender: "Não binário", preferred_race: "Negra"
+    }] });
+  });
   it("sends patient psychotherapy preferences using null and arrays correctly", async () => {
     const fetchMock = successfulFetch();
     render(
@@ -56,19 +76,22 @@ describe("registration forms", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Autismo" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Transtorno Bipolar" }));
     fireEvent.change(screen.getByLabelText("Gênero"), { target: { value: "Mulher" } });
-    fireEvent.change(screen.getByLabelText("Raça"), { target: { value: "Negra" } });
-    fireEvent.change(screen.getByLabelText("Profissional LGBTQIAPN+"), { target: { value: "true" } });
+    fireEvent.change(screen.getByLabelText("Autodeclaração do profissional"), { target: { value: "Negra" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "LGBTQIAPN+" }));
+    fireEvent.change(screen.getByLabelText("Outra especialidade"), { target: { value: "Luto" } });
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar especialidade" }));
+    expect(screen.queryByLabelText("Profissional LGBTQIAPN+")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Cadastrar paciente" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     expect(requestBody(fetchMock)).toMatchObject({
       area: "Psicoterapia",
       psychotherapy_approach: "TCC",
-      psychotherapy_specialties: ["Autismo", "Transtorno Bipolar"],
+      psychotherapy_specialties: ["Autismo", "Transtorno Bipolar", "LGBTQIAPN+", "Luto"],
       preferred_gender: "Mulher",
-      preferred_race: "Negra",
-      prefers_lgbtqiapn_plus: true
+      preferred_race: "Negra"
     });
+    expect(requestBody(fetchMock)).not.toHaveProperty("prefers_lgbtqiapn_plus");
   });
 
   it("uses the first matching area as area and sends every other area in areas", async () => {
@@ -186,7 +209,7 @@ describe("registration forms", () => {
     expect(screen.getByText("TCC")).toBeTruthy();
     expect(screen.getByText("Mulher")).toBeTruthy();
     expect(screen.getByText("Negra")).toBeTruthy();
-    expect(screen.getByText("Sim")).toBeTruthy();
+    expect(screen.queryByText("Sim")).toBeNull();
     expect(screen.queryByText("A entregar")).toBeNull();
   });
 });

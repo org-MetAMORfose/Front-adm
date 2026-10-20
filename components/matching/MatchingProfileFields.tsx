@@ -9,6 +9,7 @@ import {
   PROFESSIONAL_RACES,
   PSYCHOTHERAPY_APPROACHES,
   PSYCHOTHERAPY_SPECIALTIES,
+  normalizePsychotherapySpecialties,
   uniqueAreas
 } from "@/lib/matchingProfile";
 
@@ -56,34 +57,32 @@ export function CheckboxGroup({ legend, options, selected, onChange }: CheckboxG
   );
 }
 
-export function TriStateSelect({
-  id,
-  label,
-  value,
-  onChange,
-  emptyLabel = "Não informado"
-}: {
-  id: string;
-  label: string;
-  value: boolean | null;
-  onChange: (value: boolean | null) => void;
-  emptyLabel?: string;
+export function SpecialtyFields({ idPrefix, legend, selected, onChange }: {
+  idPrefix: string;
+  legend: string;
+  selected: string[];
+  onChange: (selected: string[]) => void;
 }) {
+  const [customSpecialty, setCustomSpecialty] = useState("");
+  const options = normalizePsychotherapySpecialties([...PSYCHOTHERAPY_SPECIALTIES, ...selected]);
+
+  function addSpecialty() {
+    onChange(normalizePsychotherapySpecialties([...selected, ...customSpecialty.split(/[,\n]/)]));
+    setCustomSpecialty("");
+  }
+
   return (
-    <div>
-      <label htmlFor={id} className={labelClass}>{label}</label>
-      <select
-        id={id}
-        value={value === null ? "" : String(value)}
-        onChange={(event) => onChange(
-          event.target.value === "" ? null : event.target.value === "true"
-        )}
-        className={inputClass}
-      >
-        <option value="">{emptyLabel}</option>
-        <option value="true">Sim</option>
-        <option value="false">Não</option>
-      </select>
+    <div className="space-y-3">
+      <CheckboxGroup legend={legend} options={options} selected={selected} onChange={onChange} />
+      <div>
+        <label htmlFor={`${idPrefix}-custom-specialty`} className={labelClass}>Outra especialidade</label>
+        <div className="flex gap-2">
+          <input id={`${idPrefix}-custom-specialty`} value={customSpecialty} onChange={(event) => setCustomSpecialty(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addSpecialty(); } }}
+            placeholder="Informe uma ou mais, separadas por vírgula" className={inputClass} />
+          <button type="button" onClick={addSpecialty} disabled={!customSpecialty.trim()} className="rounded-lg border border-sage/30 bg-white px-3 py-2 text-sm font-semibold text-sage disabled:opacity-40">Adicionar especialidade</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -150,7 +149,7 @@ export function ProfessionalMatchingFields({
       {psychotherapy ? (
         <>
           <CheckboxGroup legend="Abordagens" options={PSYCHOTHERAPY_APPROACHES} selected={value.approaches} onChange={(approaches) => onChange({ ...value, approaches })} />
-          <CheckboxGroup legend="Especialidades em psicoterapia" options={PSYCHOTHERAPY_SPECIALTIES} selected={value.specialties} onChange={(specialties) => onChange({ ...value, specialties })} />
+          <SpecialtyFields idPrefix={idPrefix} legend="Especialidades em psicoterapia" selected={value.specialties} onChange={(specialties) => onChange({ ...value, specialties })} />
         </>
       ) : null}
 
@@ -163,13 +162,12 @@ export function ProfessionalMatchingFields({
           </select>
         </div>
         <div>
-          <label htmlFor={`${idPrefix}-race`} className={labelClass}>Raça</label>
+          <label htmlFor={`${idPrefix}-race`} className={labelClass}>Autodeclaração</label>
           <select id={`${idPrefix}-race`} value={value.race} onChange={(event) => onChange({ ...value, race: event.target.value })} className={inputClass}>
             <option value="">Não informado</option>
             {PROFESSIONAL_RACES.map((race) => <option key={race} value={race}>{race}</option>)}
           </select>
         </div>
-        <TriStateSelect id={`${idPrefix}-lgbtqiapn`} label="Identificação LGBTQIAPN+" value={value.lgbtqiapnPlus} onChange={(lgbtqiapnPlus) => onChange({ ...value, lgbtqiapnPlus })} />
       </div>
     </section>
   );
