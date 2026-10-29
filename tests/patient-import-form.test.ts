@@ -16,7 +16,7 @@ describe("patient form spreadsheet", () => {
     expect(patient).toMatchObject({
       name: "Test", area: "Psicoterapia", birth_date: "2000-10-14", psychotherapy_approach: "TCC",
       preferred_race: "Negra", preferred_gender: "Mulher", errors: [],
-      psychotherapy_specialties: ["LGBTQIAPN+", "Burnout", "Transtorno de Personalidade Borderline", "Transtorno Bipolar"]
+      psychotherapy_specialties: ["LGBTQIAPN+", "Burnout", "Boderline", "Bipolaridade"]
     });
   });
 
