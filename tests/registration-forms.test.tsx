@@ -65,8 +65,8 @@ describe("registration forms", () => {
     for (const specialty of [
       "Autismo",
       "TDAH",
-      "Transtorno Bipolar",
-      "Transtorno de Personalidade Borderline",
+      "Bipolaridade",
+      "Boderline",
       "Ansiedade",
       "Depressão"
     ]) {
@@ -74,7 +74,7 @@ describe("registration forms", () => {
     }
     fireEvent.change(screen.getByLabelText("Abordagem"), { target: { value: "TCC" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "Autismo" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Transtorno Bipolar" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Bipolaridade" }));
     fireEvent.change(screen.getByLabelText("Gênero"), { target: { value: "Mulher" } });
     fireEvent.change(screen.getByLabelText("Autodeclaração do profissional"), { target: { value: "Negra" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "LGBTQIAPN+" }));
@@ -87,7 +87,7 @@ describe("registration forms", () => {
     expect(requestBody(fetchMock)).toMatchObject({
       area: "Psicoterapia",
       psychotherapy_approach: "TCC",
-      psychotherapy_specialties: ["Autismo", "Transtorno Bipolar", "LGBTQIAPN+", "Luto"],
+      psychotherapy_specialties: ["Autismo", "Bipolaridade", "LGBTQIAPN+", "Luto"],
       preferred_gender: "Mulher",
       preferred_race: "Negra"
     });

@@ -30,7 +30,7 @@ describe("patient registration preferences", () => {
     expect(response.status).toBe(200);
     expect(mocks.register).toHaveBeenCalledWith([{
       ...base, birth_date: null, psychotherapy_approach: "TCC",
-      psychotherapy_specialties: ["LGBTQIAPN+", "Transtorno de Personalidade Borderline", "Luto"],
+      psychotherapy_specialties: ["LGBTQIAPN+", "Boderline", "Luto"],
       preferred_gender: "Não binário", preferred_race: "Negra"
     }]);
   });

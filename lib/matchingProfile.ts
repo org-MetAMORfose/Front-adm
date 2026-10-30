@@ -16,8 +16,8 @@ export const PSYCHOTHERAPY_SPECIALTIES = [
   "Imigrantes",
   "Autismo",
   "TDAH",
-  "Transtorno Bipolar",
-  "Transtorno de Personalidade Borderline",
+  "Bipolaridade",
+  "Boderline",
   "Ansiedade",
   "Depressão",
   "Supervisão de Psicoterapia (Psi para psi)"
@@ -39,9 +39,9 @@ function strings(value: unknown): string[] {
 }
 
 const SPECIALTY_ALIASES: Record<string, string> = {
-  bipolaridade: "Transtorno Bipolar",
-  borderline: "Transtorno de Personalidade Borderline",
-  boderline: "Transtorno de Personalidade Borderline"
+  "transtorno bipolar": "Bipolaridade",
+  "transtorno de personalidade borderline": "Boderline",
+  borderline: "Boderline"
 };
 
 export function normalizePsychotherapySpecialties(value: unknown): string[] {
