@@ -3,12 +3,26 @@ import { describe, expect, it } from "vitest";
 import {
   hasPsychotherapyArea,
   normalizeMatchingProfile,
+  normalizePsychotherapyApproach,
   normalizePsychotherapySpecialties,
   uniqueAdditionalAreas,
   uniqueAreas
 } from "@/lib/matchingProfile";
 
 describe("matching profile", () => {
+  it.each(["Behaviorismo", "Humanismo", "Gestalt", "Fenomenologia", "Avaliação neuropsico"])(
+    "normalizes the flow approach %s", (approach) => {
+      expect(normalizePsychotherapyApproach(`  ${approach.toUpperCase()}  `)).toBe(approach);
+    }
+  );
+
+  it("normalizes supported names and rejects unknown approaches", () => {
+    expect(normalizePsychotherapyApproach("TCC")).toBe("TCC");
+    expect(normalizePsychotherapyApproach("psicanalise")).toBe("Psicanálise");
+    expect(normalizePsychotherapyApproach("Inventada")).toBeNull();
+    expect(normalizePsychotherapyApproach("Sem preferência")).toBeNull();
+  });
+
   it("reads the JSON profile using the specialty names from Forms", () => {
     expect(normalizeMatchingProfile({
       schema_version: 1,

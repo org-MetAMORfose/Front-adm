@@ -11,6 +11,8 @@ import { ProfessionalForm } from "@/components/matching/ProfessionalForm";
 import { ProfessionalSummary } from "@/components/matching/ProfessionalSummary";
 import type { ProfessionalDetail } from "@/types/matching";
 
+const NEW_APPROACHES = ["Behaviorismo", "Humanismo", "Gestalt", "Fenomenologia", "Avaliação neuropsico"];
+
 function successfulFetch() {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
@@ -35,7 +37,7 @@ describe("registration forms", () => {
     render(<PatientBatchForm activeAreas={["Psicoterapia"]} knownAreas={["Psicoterapia"]} onCancel={vi.fn()} onSuccess={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Linhas da planilha *"), { target: { value:
       ["19/10/2026 20:45:15", "Ana Souza", "", "5511999999999", "Psicoterapia", "", "", "", "", "",
-        "Até R$150", "01/01/2000", "Negro", "Não binário", "Psicoterapia TCC", "Declaro que as informações são verdadeiras", "", '"LGBTQIAPN+,\nLuto"', "", ""].join("\t")
+        "Até R$150", "01/01/2000", "Negro", "Não binário", "TCC", "Declaro que as informações são verdadeiras", "", '"LGBTQIAPN+,\nLuto"', "", ""].join("\t")
     } });
     expect(screen.getByText("LGBTQIAPN+, Luto")).toBeTruthy();
     expect(screen.getByText("Negra")).toBeTruthy();
@@ -72,7 +74,10 @@ describe("registration forms", () => {
     ]) {
       expect(screen.getByRole("checkbox", { name: specialty })).toBeTruthy();
     }
-    fireEvent.change(screen.getByLabelText("Abordagem"), { target: { value: "TCC" } });
+    for (const approach of NEW_APPROACHES) {
+      expect(screen.getByRole("option", { name: approach })).toBeTruthy();
+    }
+    fireEvent.change(screen.getByLabelText("Abordagem"), { target: { value: "Gestalt" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "Autismo" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Bipolaridade" }));
     fireEvent.change(screen.getByLabelText("Gênero"), { target: { value: "Mulher" } });
@@ -86,7 +91,7 @@ describe("registration forms", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     expect(requestBody(fetchMock)).toMatchObject({
       area: "Psicoterapia",
-      psychotherapy_approach: "TCC",
+      psychotherapy_approach: "Gestalt",
       psychotherapy_specialties: ["Autismo", "Bipolaridade", "LGBTQIAPN+", "Luto"],
       preferred_gender: "Mulher",
       preferred_race: "Negra"
@@ -121,6 +126,21 @@ describe("registration forms", () => {
     });
   });
 
+  it("offers and submits all new professional approaches", async () => {
+    const fetchMock = successfulFetch();
+    render(<ProfessionalForm knownAreas={["Psicoterapia"]} onCancel={vi.fn()} onSuccess={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Nome completo *"), { target: { value: "Carla Lima" } });
+    fireEvent.change(screen.getByLabelText("Celular *"), { target: { value: "11988887777" } });
+    fireEvent.change(screen.getByLabelText("E-mail *"), { target: { value: "carla@example.com" } });
+    fireEvent.change(screen.getByLabelText("Áreas de atuação *"), { target: { value: "Psicoterapia" } });
+    for (const approach of NEW_APPROACHES) {
+      fireEvent.click(screen.getByRole("checkbox", { name: approach }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Cadastrar profissional" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(requestBody(fetchMock)).toMatchObject({ approaches: NEW_APPROACHES });
+  });
+
   it("loads and preserves every matching area when editing", async () => {
     const fetchMock = successfulFetch();
     const professional: ProfessionalDetail = {
@@ -140,8 +160,8 @@ describe("registration forms", () => {
       minority_group: null,
       matching_profile: {
         schema_version: 1,
-        areas: ["Clínico geral", "Psiquiatria"],
-        psychotherapy: { approaches: [], specialties: [] },
+        areas: ["Clínico geral", "Psiquiatria", "Psicoterapia"],
+        psychotherapy: { approaches: ["Fenomenologia"], specialties: [] },
         profile: { gender: null, race: null, lgbtqiapn_plus: null }
       },
       created_at: "2026-01-01T00:00:00.000Z",
@@ -166,12 +186,18 @@ describe("registration forms", () => {
 
     expect(screen.getByText("Clínico geral")).toBeTruthy();
     expect(screen.getByText("Psiquiatria")).toBeTruthy();
+    for (const approach of NEW_APPROACHES) {
+      expect(screen.getByRole("checkbox", { name: approach })).toBeTruthy();
+    }
+    expect((screen.getByRole("checkbox", { name: "Fenomenologia" }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Gestalt" }));
     fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     expect(requestBody(fetchMock)).toMatchObject({
       area: "Clínico geral",
-      areas: ["Psiquiatria"]
+      areas: ["Psiquiatria", "Psicoterapia"],
+      approaches: ["Fenomenologia", "Gestalt"]
     });
   });
 

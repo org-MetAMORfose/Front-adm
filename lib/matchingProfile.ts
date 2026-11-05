@@ -1,7 +1,9 @@
 import type { ProfessionalMatchingProfile } from "@/types/matching";
 
 export const PSYCHOTHERAPY_AREA = "Psicoterapia";
-export const PSYCHOTHERAPY_APPROACHES = ["TCC", "Psicanálise"] as const;
+export const PSYCHOTHERAPY_APPROACHES = [
+  "TCC", "Psicanálise", "Behaviorismo", "Humanismo", "Gestalt", "Fenomenologia", "Avaliação neuropsico"
+] as const;
 export const PROFESSIONAL_GENDERS = ["Mulher", "Homem", "Não binário"] as const;
 export const PROFESSIONAL_RACES = ["Negra", "Branca", "Indígena", "Asiática", "Imigrante"] as const;
 export const PSYCHOTHERAPY_SPECIALTIES = [
@@ -68,7 +70,7 @@ function key(value: string) {
 }
 
 export function normalizePsychotherapyApproach(value: string): string | null {
-  return ({ tcc: "TCC", "psicoterapia tcc": "TCC", psicanalise: "Psicanálise" } as Record<string, string>)[key(value)] ?? null;
+  return PSYCHOTHERAPY_APPROACHES.find((approach) => key(approach) === key(value)) ?? null;
 }
 
 export function normalizeProfessionalGender(value: string): string | null {

@@ -24,7 +24,7 @@ describe("patient registration preferences", () => {
   });
 
   it("normalizes form labels and accepts arbitrary specialties without forwarding identity", async () => {
-    const response = await POST(request({ ...base, psychotherapy_approach: "Psicoterapia TCC",
+    const response = await POST(request({ ...base, psychotherapy_approach: "TCC",
       psychotherapy_specialties: ["LGBTQIAPN+", "Boderline", "Luto", "luto"],
       preferred_gender: "Não binária", preferred_race: "Negro", prefers_lgbtqiapn_plus: true }));
     expect(response.status).toBe(200);
@@ -42,7 +42,7 @@ describe("patient registration preferences", () => {
   });
 
   it("keeps arbitrary areas and ignores psychotherapy fields for other areas", async () => {
-    expect((await POST(request({ ...base, area: "Área nova", psychotherapy_approach: "Psicoterapia TCC",
+    expect((await POST(request({ ...base, area: "Área nova", psychotherapy_approach: "TCC",
       psychotherapy_specialties: ["Luto"] }))).status).toBe(200);
     expect(mocks.register.mock.calls[0][0][0]).toMatchObject({ area: "Área nova", psychotherapy_approach: null,
       psychotherapy_specialties: [] });
