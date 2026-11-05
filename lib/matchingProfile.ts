@@ -70,7 +70,6 @@ function key(value: string) {
 }
 
 export function normalizePsychotherapyApproach(value: string): string | null {
-  if (key(value) === "psicoterapia tcc") return "TCC";
   return PSYCHOTHERAPY_APPROACHES.find((approach) => key(approach) === key(value)) ?? null;
 }
 

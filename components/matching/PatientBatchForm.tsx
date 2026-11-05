@@ -113,7 +113,7 @@ export function PatientBatchForm({ activeAreas, knownAreas, onCancel, onSuccess 
           rows={7}
           wrap="soft"
           className={`${inputClass} resize-y font-mono`}
-          placeholder={'19/10/2026 20:45:15\tAna\t\t5511999999999\tPsicoterapia\t\t\t\t\t\tAté R$150\t01/01/2000\tNegro\tMulher\tPsicoterapia TCC\tDeclaro que as informações são verdadeiras\t\tLGBTQIAPN+, Ansiedade'}
+          placeholder={'19/10/2026 20:45:15\tAna\t\t5511999999999\tPsicoterapia\t\t\t\t\t\tAté R$150\t01/01/2000\tNegro\tMulher\tTCC\tDeclaro que as informações são verdadeiras\t\tLGBTQIAPN+, Ansiedade'}
         />
         <p className="mt-1.5 text-xs text-ink/45">
           Aceita a planilha completa ou linhas compactas, incluindo células com quebras de linha copiadas do Sheets. Abordagem, gênero, autodeclaração e especialidades são opcionais. A faixa de pagamento é ignorada no matching.

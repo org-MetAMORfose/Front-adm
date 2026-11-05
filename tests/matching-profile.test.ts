@@ -16,8 +16,8 @@ describe("matching profile", () => {
     }
   );
 
-  it("keeps the legacy alias and rejects unknown approaches", () => {
-    expect(normalizePsychotherapyApproach("Psicoterapia TCC")).toBe("TCC");
+  it("normalizes supported names and rejects unknown approaches", () => {
+    expect(normalizePsychotherapyApproach("TCC")).toBe("TCC");
     expect(normalizePsychotherapyApproach("psicanalise")).toBe("Psicanálise");
     expect(normalizePsychotherapyApproach("Inventada")).toBeNull();
     expect(normalizePsychotherapyApproach("Sem preferência")).toBeNull();

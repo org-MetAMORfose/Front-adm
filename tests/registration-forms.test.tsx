@@ -37,7 +37,7 @@ describe("registration forms", () => {
     render(<PatientBatchForm activeAreas={["Psicoterapia"]} knownAreas={["Psicoterapia"]} onCancel={vi.fn()} onSuccess={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Linhas da planilha *"), { target: { value:
       ["19/10/2026 20:45:15", "Ana Souza", "", "5511999999999", "Psicoterapia", "", "", "", "", "",
-        "Até R$150", "01/01/2000", "Negro", "Não binário", "Psicoterapia TCC", "Declaro que as informações são verdadeiras", "", '"LGBTQIAPN+,\nLuto"', "", ""].join("\t")
+        "Até R$150", "01/01/2000", "Negro", "Não binário", "TCC", "Declaro que as informações são verdadeiras", "", '"LGBTQIAPN+,\nLuto"', "", ""].join("\t")
     } });
     expect(screen.getByText("LGBTQIAPN+, Luto")).toBeTruthy();
     expect(screen.getByText("Negra")).toBeTruthy();

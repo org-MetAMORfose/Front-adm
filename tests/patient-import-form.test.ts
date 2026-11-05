@@ -4,7 +4,7 @@ import { findDuplicateImportedPhones, parsePatientPaste } from "@/lib/patientImp
 
 const completeRow = (changes: Record<number, string> = {}) => {
   const cells = ["19/10/2026 20:45:15", "Test", "", "5511974527717", "Psicoterapia", "", "", "", "", "",
-    "Até R$150", "14/10/2000", "Negro", "Mulher", "Psicoterapia TCC",
+    "Até R$150", "14/10/2000", "Negro", "Mulher", "TCC",
     "Declaro que todas as informações que eu preenchi são verdadeiras", "", "LGBTQIAPN+, Burnout, Boderline, Bipolaridade", "", ""];
   for (const [index, value] of Object.entries(changes)) cells[Number(index)] = value;
   return cells;
@@ -72,7 +72,7 @@ describe("patient form spreadsheet", () => {
   it("still infers preferences and birth dates when an old header has unnamed columns", () => {
     const [patient] = parsePatientPaste([
       "Nome\tTelefone\tÁrea\tColuna 4\tColuna 5\tColuna 6\tColuna 7",
-      "Ana\t5511999999999\tPsicoterapia\t01/01/2000\tPsicoterapia TCC\tMulher\tLuto"
+      "Ana\t5511999999999\tPsicoterapia\t01/01/2000\tTCC\tMulher\tLuto"
     ].join("\n"));
     expect(patient).toMatchObject({ birth_date: "2000-01-01", psychotherapy_approach: "TCC",
       preferred_gender: "Mulher", psychotherapy_specialties: ["Luto"], errors: [] });
