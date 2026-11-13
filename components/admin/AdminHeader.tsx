@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { CircleHelp, GitFork, MessageSquareText, Network } from "lucide-react";
+import { CircleHelp, GitFork, MessageSquareText, Network, Zap } from "lucide-react";
 
 type Props = {
   title: string;
@@ -15,7 +15,8 @@ const navigation = [
   { href: "/", label: "Conversas", icon: MessageSquareText },
   { href: "/distribuicao", label: "Distribuição", icon: Network },
   { href: "/fluxo", label: "Fluxo", icon: GitFork },
-  { href: "/faq", label: "FAQ", icon: CircleHelp }
+  { href: "/faq", label: "FAQ", icon: CircleHelp },
+  { href: "/imediato", label: "Imediato", icon: Zap }
 ];
 
 export function AdminHeader({ title, description, actions }: Props) {
