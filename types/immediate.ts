@@ -16,5 +16,6 @@ export type ImmediateRequestRow = {
   paidAt: string | null;
   acceptedAt: string | null;
   refundedAt: string | null;
+  refundFailedAt: string | null;
   expiresAt: string;
 };

@@ -10,13 +10,15 @@ const labels: Record<ImmediateStatus, string> = {
   cancelled: "Cancelado"
 };
 
-const styles: Record<ImmediateStatus | "refunded", string> = {
+const styles: Record<ImmediateStatus | "refunded" | "refund_failed" | "refund_pending", string> = {
   awaiting_payment: "border-amber-200 bg-amber-50 text-amber-700",
   queued: "border-sky-200 bg-sky-50 text-sky-700",
   accepted: "border-emerald-200 bg-emerald-50 text-emerald-700",
   expired: "border-coral/25 bg-coral/10 text-coral",
   cancelled: "border-black/10 bg-mist text-ink/55",
-  refunded: "border-sage/25 bg-sage/10 text-sage"
+  refunded: "border-sage/25 bg-sage/10 text-sage",
+  refund_failed: "border-coral/40 bg-coral/15 text-coral",
+  refund_pending: "border-amber-200 bg-amber-50 text-amber-700"
 };
 
 export function isImmediateStatus(value: string): value is ImmediateStatus {
@@ -30,12 +32,34 @@ export function formatCents(cents: number): string {
   return `R$ ${thousands},${centavos.toString().padStart(2, "0")}`;
 }
 
-export function immediateStatusLabel(status: ImmediateStatus, refundedAt: string | null): string {
-  if (status === "expired" && refundedAt) return "Estornado";
-  return labels[status];
+type RefundState = { refundedAt: string | null; refundFailedAt?: string | null; pixRefundId?: string | null };
+
+/** An expired request is really about its refund: done, failed (someone must refund by hand) or still with the bank. */
+function refundKey(status: ImmediateStatus, refund: RefundState): ImmediateStatus | "refunded" | "refund_failed" | "refund_pending" {
+  if (status !== "expired") return status;
+  if (refund.refundedAt) return "refunded";
+  if (refund.refundFailedAt) return "refund_failed";
+  if (refund.pixRefundId) return "refund_pending";
+  return status;
 }
 
-export function immediateStatusStyle(status: ImmediateStatus, refundedAt: string | null): string {
-  if (status === "expired" && refundedAt) return styles.refunded;
-  return styles[status];
+const refundLabels = { refunded: "Estornado", refund_failed: "Estorno falhou", refund_pending: "Estorno pendente" } as const;
+
+export function immediateStatusLabel(
+  status: ImmediateStatus,
+  refundedAt: string | null,
+  refundFailedAt: string | null = null,
+  pixRefundId: string | null = null
+): string {
+  const key = refundKey(status, { refundedAt, refundFailedAt, pixRefundId });
+  return key in refundLabels ? refundLabels[key as keyof typeof refundLabels] : labels[key as ImmediateStatus];
+}
+
+export function immediateStatusStyle(
+  status: ImmediateStatus,
+  refundedAt: string | null,
+  refundFailedAt: string | null = null,
+  pixRefundId: string | null = null
+): string {
+  return styles[refundKey(status, { refundedAt, refundFailedAt, pixRefundId })];
 }

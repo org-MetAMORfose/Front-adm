@@ -17,8 +17,15 @@ function Person({ name, phone }: { name: string | null; phone: string | null }) 
 
 export function ImmediateStatusBadge({ request }: { request: ImmediateRequestRow }) {
   return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${immediateStatusStyle(request.status, request.refundedAt)}`}>
-      {immediateStatusLabel(request.status, request.refundedAt)}
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${immediateStatusStyle(
+        request.status,
+        request.refundedAt,
+        request.refundFailedAt,
+        request.pixRefundId
+      )}`}
+    >
+      {immediateStatusLabel(request.status, request.refundedAt, request.refundFailedAt, request.pixRefundId)}
     </span>
   );
 }
@@ -61,6 +68,9 @@ export function ImmediateTable({ requests }: { requests: ImmediateRequestRow[] }
               <td className="px-4 py-3">
                 <ImmediateStatusBadge request={request} />
                 {request.refundedAt ? <div className="mt-1 text-xs text-ink/55">Estorno {formatDate(request.refundedAt, true)}</div> : null}
+                {request.refundFailedAt ? (
+                  <div className="mt-1 text-xs font-medium text-coral">Devolver manualmente ({formatDate(request.refundFailedAt, true)})</div>
+                ) : null}
               </td>
               <td className="px-4 py-3 text-ink/70">{formatDate(request.createdAt, true)}</td>
               <td className="px-4 py-3 text-ink/70">{formatDate(request.paidAt, true)}</td>

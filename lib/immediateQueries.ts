@@ -17,6 +17,7 @@ export type ImmediateRequestRecord = {
   paid_at: Date | null;
   accepted_at: Date | null;
   refunded_at: Date | null;
+  refund_failed_at: Date | null;
   expires_at: Date;
   created_at: Date;
   patient: PersonRecord;
@@ -52,6 +53,7 @@ export function mapImmediateRequest(row: ImmediateRequestRecord): ImmediateReque
     paidAt: iso(row.paid_at),
     acceptedAt: iso(row.accepted_at),
     refundedAt: iso(row.refunded_at),
+    refundFailedAt: iso(row.refund_failed_at),
     expiresAt: row.expires_at.toISOString()
   };
 }

@@ -24,6 +24,7 @@ const row = {
   paid_at: new Date("2026-11-12T20:00:00.000Z"),
   accepted_at: new Date("2026-11-12T20:01:00.000Z"),
   refunded_at: null,
+  refund_failed_at: null,
   expires_at: new Date("2026-11-12T20:05:00.000Z"),
   created_at: new Date("2026-11-12T19:59:00.000Z"),
   patient: { name: " Maria Silva ", phone_number: "5511999999999" },
@@ -52,6 +53,7 @@ describe("immediate queries", () => {
       paidAt: "2026-11-12T20:00:00.000Z",
       acceptedAt: "2026-11-12T20:01:00.000Z",
       refundedAt: null,
+      refundFailedAt: null,
       expiresAt: "2026-11-12T20:05:00.000Z"
     });
   });
@@ -90,5 +92,12 @@ describe("immediate domain", () => {
     expect(immediateStatusLabel("expired", null)).toBe("Expirado");
     expect(immediateStatusLabel("expired", "2026-11-12T20:06:00.000Z")).toBe("Estornado");
     expect(immediateStatusLabel("cancelled", null)).toBe("Cancelado");
+  });
+
+  it("tells a failed or pending refund apart from a plain expiry", () => {
+    expect(immediateStatusLabel("expired", null, "2026-11-12T20:30:00.000Z", "a".repeat(32) + "R1")).toBe("Estorno falhou");
+    expect(immediateStatusLabel("expired", null, null, "a".repeat(32) + "R1")).toBe("Estorno pendente");
+    expect(immediateStatusLabel("expired", "2026-11-12T20:06:00.000Z", "2026-11-12T20:05:00.000Z", "x")).toBe("Estornado");
+    expect(immediateStatusLabel("accepted", null, null, "x")).toBe("Aceito");
   });
 });
