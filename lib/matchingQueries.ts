@@ -268,6 +268,7 @@ export async function getProfessionalDetail(
     minority_group: professional.minority_group,
     matching_profile: matchingProfile,
     created_at: professional.created_at.toISOString(),
+    available_for_immediate: professional.available_for_immediate,
     is_active: cycles.some((cycle) => cycle.status === "ACTIVE"),
     promised_patients: promised,
     delivered_patients: delivered,
