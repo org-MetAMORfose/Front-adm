@@ -48,7 +48,8 @@ export function mapImmediateRequest(row: ImmediateRequestRecord): ImmediateReque
     professionalPhone: row.professional ? row.professional.phone_number : null,
     pixTxid: row.pix_txid,
     pixRefundId: row.pix_refund_id,
-    roomUrl: row.room_url,
+    // Only whether the room exists: the join links carry a per-person token and never leave the database.
+    roomCreated: Boolean(row.room_url),
     createdAt: row.created_at.toISOString(),
     paidAt: iso(row.paid_at),
     acceptedAt: iso(row.accepted_at),

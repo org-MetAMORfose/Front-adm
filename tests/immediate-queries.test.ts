@@ -48,7 +48,7 @@ describe("immediate queries", () => {
       professionalPhone: "5511977776666",
       pixTxid: "a".repeat(32),
       pixRefundId: null,
-      roomUrl: "https://exemplo.daily.co/sala",
+      roomCreated: true,
       createdAt: "2026-11-12T19:59:00.000Z",
       paidAt: "2026-11-12T20:00:00.000Z",
       acceptedAt: "2026-11-12T20:01:00.000Z",

@@ -1,5 +1,3 @@
-import { ExternalLink } from "lucide-react";
-
 import { formatCents, immediateStatusLabel, immediateStatusStyle } from "@/lib/immediateDomain";
 import { formatDate } from "@/lib/matchingDomain";
 import { displayBrazilianPhone } from "@/lib/phone";
@@ -79,18 +77,8 @@ export function ImmediateTable({ requests }: { requests: ImmediateRequestRow[] }
                 {request.acceptedAt ? <div className="mt-1 text-xs text-ink/55">Aceito {formatDate(request.acceptedAt, true)}</div> : null}
               </td>
               <td className="px-4 py-3">
-                {request.roomUrl ? (
-                  <a
-                    href={request.roomUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-sage hover:underline"
-                  >
-                    Abrir sala <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                  </a>
-                ) : (
-                  <span className="text-ink/40">--</span>
-                )}
+                {/* The link is not shown: the room is private and each person's link carries their own token. */}
+                {request.roomCreated ? <span className="text-ink/70">Criada</span> : <span className="text-ink/40">--</span>}
               </td>
             </tr>
           ))}

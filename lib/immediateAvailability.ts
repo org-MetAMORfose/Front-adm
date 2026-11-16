@@ -8,25 +8,34 @@ function chatbotBaseUrl() {
   return baseUrl;
 }
 
-export async function setImmediateAvailability(professionalId: number, available: boolean): Promise<ChatbotResult> {
+async function patchProfessional(professionalId: number, path: "availability" | "approval", body: object): Promise<ChatbotResult> {
   const baseUrl = chatbotBaseUrl();
   const apiKey = process.env.CHATBOT_API_KEY;
   if (!apiKey) throw new Error("CHATBOT_API_KEY ainda não foi configurada.");
 
-  const response = await fetch(`${baseUrl}/immediate/professionals/${professionalId}/availability`, {
+  const response = await fetch(`${baseUrl}/immediate/professionals/${professionalId}/${path}`, {
     method: "PATCH",
     headers: { "content-type": "application/json", "X-Chatbot-Api-Key": apiKey },
-    body: JSON.stringify({ available }),
+    body: JSON.stringify(body),
     cache: "no-store"
   });
   const text = await response.text();
-  let body: unknown = null;
+  let parsed: unknown = null;
   if (text) {
     try {
-      body = JSON.parse(text) as unknown;
+      parsed = JSON.parse(text) as unknown;
     } catch {
-      body = text;
+      parsed = text;
     }
   }
-  return { ok: response.ok, status: response.status, body };
+  return { ok: response.ok, status: response.status, body: parsed };
+}
+
+export function setImmediateAvailability(professionalId: number, available: boolean): Promise<ChatbotResult> {
+  return patchProfessional(professionalId, "availability", { available });
+}
+
+/** The team releases a psychologist for immediate care after checking the CRP; withdrawing also switches availability off. */
+export function setImmediateApproval(professionalId: number, approved: boolean): Promise<ChatbotResult> {
+  return patchProfessional(professionalId, "approval", { approved });
 }

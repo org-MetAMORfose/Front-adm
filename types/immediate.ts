@@ -11,7 +11,7 @@ export type ImmediateRequestRow = {
   professionalPhone: string | null;
   pixTxid: string | null;
   pixRefundId: string | null;
-  roomUrl: string | null;
+  roomCreated: boolean;
   createdAt: string;
   paidAt: string | null;
   acceptedAt: string | null;

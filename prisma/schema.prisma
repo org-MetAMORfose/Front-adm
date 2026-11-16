@@ -65,6 +65,7 @@ model professional {
   matching_profile                  Json             @default("{}")
   available_for_immediate           Boolean          @default(false)
   immediate_availability_updated_at DateTime?        @db.Timestamptz(6)
+  immediate_approved_at             DateTime?        @db.Timestamptz(6)
   matching_cycle                    matching_cycle[]
   person                            person           @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
