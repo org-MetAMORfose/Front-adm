@@ -64,5 +64,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+  // With basePath, "/" is the only pattern that covers the bare "/admin" home page.
+  matcher: ["/", "/((?!_next/static|_next/image|favicon.ico).*)"]
 };
