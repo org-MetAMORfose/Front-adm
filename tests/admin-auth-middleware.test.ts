@@ -1,7 +1,9 @@
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { middleware } from "@/middleware";
+import { APP_BASE_PATH } from "@/lib/basePath";
+import { config, middleware } from "@/middleware";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -54,5 +56,14 @@ describe("panel login", () => {
     vi.stubEnv("ADMIN_USER", "equipe");
     vi.stubEnv("ADMIN_PASSWORD", "senha-forte");
     expect(passes(middleware(request("/admin/api/health")))).toBe(true);
+  });
+});
+
+describe("panel login coverage", () => {
+  it("runs on the panel home page too, so the login prompt shows before the empty screen", () => {
+    for (const url of ["/admin", "/admin/", "/admin/imediato", "/admin/api/admin/conversations"]) {
+      expect(unstable_doesMiddlewareMatch({ config, nextConfig: { basePath: APP_BASE_PATH }, url }), url).toBe(true);
+    }
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig: { basePath: APP_BASE_PATH }, url: "/admin/_next/static/chunk.js" })).toBe(false);
   });
 });
