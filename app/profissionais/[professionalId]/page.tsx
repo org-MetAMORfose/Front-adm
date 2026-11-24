@@ -11,7 +11,9 @@ import {
   Pencil,
   MessageSquareText,
   RotateCcw,
-  Users
+  ShieldCheck,
+  Users,
+  Zap
 } from "lucide-react";
 
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -90,6 +92,57 @@ export default function ProfessionalDetailPage() {
         professional_register: professional.professional_register
       }
     : null;
+
+  const [togglingAvailability, setTogglingAvailability] = useState(false);
+  const [togglingApproval, setTogglingApproval] = useState(false);
+
+  async function toggleImmediateApproval() {
+    if (!professional) return;
+    const releasing = !professional.immediate_approved_at;
+    if (releasing && !window.confirm("Liberar este profissional para o acolhimento imediato? Confira antes o CRP ativo.")) return;
+    setTogglingApproval(true);
+    setNotice(null);
+    try {
+      const response = await fetch(withBasePath(`/api/admin/professionals/${professional.id}/immediate-approval`), {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ approved: releasing })
+      });
+      const body = (await response.json()) as { error?: string; immediate_approved_at?: string | null };
+      if (!response.ok) {
+        throw new Error(body.error || "Não foi possível atualizar a liberação.");
+      }
+      setNotice(body.immediate_approved_at ? "Profissional liberado para o acolhimento imediato." : "Liberação para o acolhimento imediato retirada.");
+      await queryClient.invalidateQueries({ queryKey: ["professional", professionalId] });
+    } catch (caught) {
+      setNotice(caught instanceof Error ? caught.message : "Erro inesperado.");
+    } finally {
+      setTogglingApproval(false);
+    }
+  }
+
+  async function toggleImmediateAvailability() {
+    if (!professional) return;
+    setTogglingAvailability(true);
+    setNotice(null);
+    try {
+      const response = await fetch(withBasePath(`/api/admin/professionals/${professional.id}/immediate-availability`), {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ available: !professional.available_for_immediate })
+      });
+      const body = (await response.json()) as { error?: string; available_for_immediate?: boolean };
+      if (!response.ok) {
+        throw new Error(body.error || "Não foi possível atualizar a disponibilidade.");
+      }
+      setNotice(body.available_for_immediate ? "Profissional disponível para acolhimento imediato." : "Profissional fora do acolhimento imediato.");
+      await queryClient.invalidateQueries({ queryKey: ["professional", professionalId] });
+    } catch (caught) {
+      setNotice(caught instanceof Error ? caught.message : "Erro inesperado.");
+    } finally {
+      setTogglingAvailability(false);
+    }
+  }
 
   async function professionalUpdated() {
     setEditModal(false);
@@ -178,8 +231,25 @@ export default function ProfessionalDetailPage() {
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-2xl font-semibold">{professional.name}</h2>
                   <ProfessionalStatusBadge active={professional.is_active} overdue={professional.cycles.some((cycle) => cycle.status === "OVERDUE")} />
+                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${professional.available_for_immediate ? "border-sky-200 bg-sky-50 text-sky-700" : "border-black/10 bg-mist text-ink/55"}`}>
+                    {professional.available_for_immediate
+                      ? "Disponível para imediato"
+                      : professional.immediate_approved_at
+                        ? "Liberado para imediato"
+                        : "Não liberado para imediato"}
+                  </span>
                 </div>
                 <p className="mt-1 text-sm text-ink/55">{professional.matching_profile.areas.join(", ")}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={toggleImmediateApproval} disabled={togglingApproval} className="inline-flex items-center gap-2 rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-semibold text-ink/75 transition hover:bg-mist disabled:cursor-not-allowed disabled:opacity-50">
+                  <ShieldCheck className="h-4 w-4" aria-hidden />
+                  {togglingApproval ? "Salvando..." : professional.immediate_approved_at ? "Tirar liberação do imediato" : "Liberar para imediato"}
+                </button>
+                <button type="button" onClick={toggleImmediateAvailability} disabled={togglingAvailability || (!professional.immediate_approved_at && !professional.available_for_immediate)} title={professional.immediate_approved_at ? undefined : "Libere o profissional antes"} className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50">
+                  <Zap className="h-4 w-4" aria-hidden />
+                  {togglingAvailability ? "Salvando..." : professional.available_for_immediate ? "Marcar indisponível" : "Marcar disponível"}
+                </button>
               </div>
             </section>
 

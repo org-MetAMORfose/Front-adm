@@ -165,6 +165,8 @@ describe("registration forms", () => {
         profile: { gender: null, race: null, lgbtqiapn_plus: null }
       },
       created_at: "2026-01-01T00:00:00.000Z",
+      available_for_immediate: false,
+      immediate_approved_at: null,
       is_active: false,
       promised_patients: 0,
       delivered_patients: 0,

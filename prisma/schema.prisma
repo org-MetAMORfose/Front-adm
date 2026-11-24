@@ -18,53 +18,84 @@ model message_history {
 }
 
 model patient {
-  id                     Int                    @id @default(autoincrement())
+  id                     Int             @id @default(autoincrement())
   person_id              Int
-  created_at             DateTime               @db.Timestamp(6)
-  area                   String?                @db.VarChar
-  psychotherapy_approach String?                @db.VarChar
-  professional_profile   String?                @db.VarChar
-  price_range            String?                @db.VarChar
-  matching_request       Json                   @default("{}")
-  person                 person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  created_at             DateTime        @db.Timestamp(6)
+  area                   String?         @db.VarChar
+  psychotherapy_approach String?         @db.VarChar
+  professional_profile   String?         @db.VarChar
+  price_range            String?         @db.VarChar
+  matching_request       Json            @default("{}")
+  person                 person          @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   matching_slot          matching_slot[]
 }
 
 model person {
-  id              Int               @id @default(autoincrement())
-  phone_number    String            @db.VarChar
-  name            String?           @db.VarChar
-  cpf             String?           @unique @db.VarChar
-  channel         channel?
-  created_at      DateTime          @db.Timestamp(6)
-  chat_state      chatstate?
-  chat_mode       chatmode
-  birth_date      DateTime?         @db.Date
-  message_history message_history[]
-  patient         patient[]
-  professional    professional?
+  id                                 Int                 @id @default(autoincrement())
+  phone_number                       String              @db.VarChar
+  name                               String?             @db.VarChar
+  cpf                                String?             @unique @db.VarChar
+  channel                            channel?
+  created_at                         DateTime            @db.Timestamp(6)
+  chat_state                         chatstate?
+  chat_mode                          chatmode
+  birth_date                         DateTime?           @db.Date
+  message_history                    message_history[]
+  patient                            patient[]
+  professional                       professional?
+  immediate_requests_as_patient      immediate_request[] @relation("immediate_patient")
+  immediate_requests_as_professional immediate_request[] @relation("immediate_professional")
 
   @@unique([phone_number, channel], map: "uq_person_phone_channel")
 }
 
 model professional {
-  id                    Int                    @id @default(autoincrement())
-  person_id             Int                    @unique
-  area                  String                 @db.VarChar
-  professional_register String                 @db.VarChar
-  register_type         String                 @db.VarChar
-  approach              String?
-  background            String?
-  video_platform        String?                @db.VarChar
-  email                 String?                @db.VarChar
-  created_at            DateTime               @db.Timestamp(6)
-  gender                String?                @db.VarChar
-  minority_group        String?                @db.VarChar
-  matching_profile      Json                   @default("{}")
-  matching_cycle        matching_cycle[]
-  person                person                 @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id                                Int              @id @default(autoincrement())
+  person_id                         Int              @unique
+  area                              String           @db.VarChar
+  professional_register             String           @db.VarChar
+  register_type                     String           @db.VarChar
+  approach                          String?
+  background                        String?
+  video_platform                    String?          @db.VarChar
+  email                             String?          @db.VarChar
+  created_at                        DateTime         @db.Timestamp(6)
+  gender                            String?          @db.VarChar
+  minority_group                    String?          @db.VarChar
+  matching_profile                  Json             @default("{}")
+  available_for_immediate           Boolean          @default(false)
+  immediate_availability_updated_at DateTime?        @db.Timestamptz(6)
+  immediate_approved_at             DateTime?        @db.Timestamptz(6)
+  matching_cycle                    matching_cycle[]
+  person                            person           @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([register_type, professional_register], map: "uq_professional_register")
+}
+
+model immediate_request {
+  id                     Int       @id @default(autoincrement())
+  patient_person_id      Int
+  professional_person_id Int?
+  duration_minutes       Int
+  amount_cents           Int
+  status                 String    @db.VarChar
+  pix_txid               String?   @unique @db.VarChar
+  pix_copia_cola         String?
+  pix_e2e_id             String?   @db.VarChar
+  pix_refund_id          String?   @db.VarChar
+  room_url               String?
+  paid_at                DateTime? @db.Timestamptz(6)
+  accepted_at            DateTime? @db.Timestamptz(6)
+  refunded_at            DateTime? @db.Timestamptz(6)
+  refund_failed_at       DateTime? @db.Timestamptz(6)
+  expires_at             DateTime  @db.Timestamptz(6)
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime  @default(now()) @db.Timestamptz(6)
+  patient                person    @relation("immediate_patient", fields: [patient_person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  professional           person?   @relation("immediate_professional", fields: [professional_person_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([status, expires_at], map: "ix_immediate_request_status_expires")
+  @@index([patient_person_id], map: "ix_immediate_request_patient")
 }
 
 model matching_cycle {

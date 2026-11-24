@@ -23,6 +23,7 @@ Painel fullstack em Next.js para visualizar conversas, gerenciar ciclos de match
 - Cadastros de pacientes sao encaminhados ao chatbot; o painel nao escreve em `person` ou `patient`.
 - Envio de mensagem e aprovacao sao feitos por HTTP externo.
 - Nao commite `.env` real.
+- Login: com `ADMIN_USER` e `ADMIN_PASSWORD` definidos, todo o painel (paginas e rotas `/api/admin`) pede usuario e senha (HTTP Basic, `middleware.ts`); so `/api/health` fica aberto. Sem as duas, o painel funciona como antes, mas as telas e rotas do acolhimento imediato respondem 503: elas mostram quem pediu atendimento psicologico e liberam profissionais.
 
 ## Instalacao
 
@@ -51,6 +52,8 @@ CHATBOT_CREATE_PROFESSIONAL_URL=""
 MATCHING_FOLLOWUP_TEMPLATE_URL="http://localhost:8000/whatsapp/templates/acompanhamento_emparelhamento"
 CHATBOT_FLOW_API_URL="http://localhost:8000"
 CHATBOT_API_KEY=""
+ADMIN_USER=""
+ADMIN_PASSWORD=""
 AWS_ACCESS_KEY_ID=""
 AWS_SECRET_ACCESS_KEY=""
 AWS_REGION="us-east-1"
@@ -190,6 +193,7 @@ Secrets usadas pelo workflow de CD:
 - `CHATBOT_FLOW_API_URL`;
 - `CHATBOT_FAQ_API_URL`;
 - `CHATBOT_API_KEY`;
+- `ADMIN_USER` e `ADMIN_PASSWORD` (login do painel; obrigatorios antes de ligar o acolhimento imediato);
 - `S3_BUCKET_NAME`;
 - `AWS_ACCESS_KEY_ID`;
 - `AWS_SECRET_ACCESS_KEY`;

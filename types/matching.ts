@@ -101,6 +101,8 @@ export type ProfessionalDetail = ProfessionalOption & {
   minority_group: string | null;
   matching_profile: ProfessionalMatchingProfile;
   created_at: string;
+  available_for_immediate: boolean;
+  immediate_approved_at: string | null;
   is_active: boolean;
   promised_patients: number;
   delivered_patients: number;
