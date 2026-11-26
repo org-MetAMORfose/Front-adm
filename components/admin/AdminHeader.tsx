@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { CircleHelp, GitFork, MessageSquareText, Network, Zap } from "lucide-react";
+import { CircleHelp, GitFork, LogOut, MessageSquareText, Network, Zap } from "lucide-react";
+
+import { withBasePath } from "@/lib/basePath";
 
 type Props = {
   title: string;
@@ -57,9 +59,18 @@ export function AdminHeader({ title, description, actions }: Props) {
           })}
         </nav>
 
-        {actions ? (
-          <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>
-        ) : null}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {actions}
+          <form method="post" action={withBasePath("/api/auth/logout")}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-ink/60 transition hover:bg-mist hover:text-ink"
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              Sair
+            </button>
+          </form>
+        </div>
       </div>
     </header>
   );

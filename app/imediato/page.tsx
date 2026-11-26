@@ -53,7 +53,7 @@ export default function ImmediatePage() {
     <div className="flex h-full min-h-screen flex-col bg-mist">
       <AdminHeader
         title="Acolhimento imediato"
-        description="Pedidos pagos por Pix, oferta aos psicólogos disponíveis e salas de vídeo."
+        description="Pedidos pagos por Pix, oferta aos profissionais disponíveis e salas de vídeo."
         actions={
           <button
             type="button"
@@ -82,7 +82,7 @@ export default function ImmediatePage() {
           <ImmediateTable requests={query.data ?? []} />
         )}
         <p className="text-xs text-ink/45">
-          Os psicólogos ligam e desligam a disponibilidade mandando DISPONÍVEL ou INDISPONÍVEL no WhatsApp, ou pela página do profissional.
+          Os profissionais ligam e desligam a disponibilidade mandando DISPONÍVEL ou INDISPONÍVEL no WhatsApp, ou pela página do profissional.
         </p>
       </main>
     </div>

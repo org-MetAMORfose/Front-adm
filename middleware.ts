@@ -1,44 +1,33 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/adminSession";
 import { APP_BASE_PATH } from "@/lib/basePath";
 
 /*
- * Login (HTTP Basic) in front of the whole panel once ADMIN_USER and ADMIN_PASSWORD are set.
- * Until then the panel behaves as before, except the immediate care screens and routes: they show
- * who asked for psychological care and release professionals, so they stay closed without a password.
+ * Login screen in front of the whole panel once ADMIN_USER and ADMIN_PASSWORD are set: pages without a session go to
+ * /login, API routes answer 401. Until then the panel behaves as before, except the immediate care screens and routes:
+ * they show who asked for psychological care and release professionals, so they stay closed without a password.
  */
 
 const IMMEDIATE_PATHS = [/^\/imediato(\/|$)/, /^\/api\/admin\/immediate(\/|$)/, /^\/api\/admin\/professionals\/[^/]+\/immediate-/];
-const PUBLIC_PATHS = new Set(["/api/health"]);
+const PUBLIC_PATHS = new Set(["/api/health", "/api/auth/login", "/api/auth/logout"]);
+const LOGIN_PATH = "/login";
 
 function withoutBasePath(pathname: string): string {
   if (pathname === APP_BASE_PATH) return "/";
   return pathname.startsWith(`${APP_BASE_PATH}/`) ? pathname.slice(APP_BASE_PATH.length) : pathname;
 }
 
-function safeEqual(received: string, expected: string): boolean {
-  const length = Math.max(received.length, expected.length);
-  let difference = received.length ^ expected.length;
-  for (let index = 0; index < length; index += 1) {
-    difference |= (received.charCodeAt(index) || 0) ^ (expected.charCodeAt(index) || 0);
-  }
-  return difference === 0;
+/**
+ * The login screen is served in place of the page (a rewrite, not a redirect): behind nginx the host Next sees may be
+ * the container's, so an absolute redirect could send the browser to the wrong address.
+ */
+function showLogin(request: NextRequest, next: string): NextResponse {
+  const query = next === "/" ? "" : `?next=${encodeURIComponent(next)}`;
+  return NextResponse.rewrite(new URL(`${APP_BASE_PATH}${LOGIN_PATH}${query}`, request.url));
 }
 
-function decodeBasic(header: string | null): { user: string; password: string } | null {
-  if (!header?.startsWith("Basic ")) return null;
-  try {
-    const bytes = Uint8Array.from(atob(header.slice("Basic ".length).trim()), (character) => character.charCodeAt(0));
-    const decoded = new TextDecoder().decode(bytes);
-    const separator = decoded.indexOf(":");
-    if (separator < 0) return null;
-    return { user: decoded.slice(0, separator), password: decoded.slice(separator + 1) };
-  } catch {
-    return null;
-  }
-}
-
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const path = withoutBasePath(request.nextUrl.pathname);
   if (PUBLIC_PATHS.has(path)) return NextResponse.next();
 
@@ -51,16 +40,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const credentials = decodeBasic(request.headers.get("authorization"));
-  // Both comparisons always run, so the response time does not tell which half was wrong.
-  const userMatches = safeEqual(credentials?.user ?? "", user);
-  const passwordMatches = safeEqual(credentials?.password ?? "", password);
-  if (credentials && userMatches && passwordMatches) return NextResponse.next();
+  // The login page itself decides what to do with someone already signed in (it sends them to the panel).
+  if (path === LOGIN_PATH) return NextResponse.next();
+  if (await verifyAdminSession(request.cookies.get(ADMIN_SESSION_COOKIE)?.value, user, password)) return NextResponse.next();
 
-  return new NextResponse("Login necessário.", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Painel MetAMORfose", charset="UTF-8"' }
-  });
+  if (path.startsWith("/api/")) {
+    return NextResponse.json({ error: "Sessão expirada. Entre de novo no painel." }, { status: 401 });
+  }
+  return showLogin(request, `${path}${request.nextUrl.search}`);
 }
 
 export const config = {
