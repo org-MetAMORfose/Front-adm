@@ -99,7 +99,7 @@ export default function ProfessionalDetailPage() {
   async function toggleImmediateApproval() {
     if (!professional) return;
     const releasing = !professional.immediate_approved_at;
-    if (releasing && !window.confirm("Liberar este profissional para o acolhimento imediato? Confira antes o CRP ativo.")) return;
+    if (releasing && !window.confirm("Liberar este profissional para o acolhimento imediato? Confira antes o registro profissional ativo (CRP, CRM, CRN…).")) return;
     setTogglingApproval(true);
     setNotice(null);
     try {
