@@ -6,7 +6,7 @@ import { useState, type FormEvent } from "react";
 import { withBasePath } from "@/lib/basePath";
 
 const inputClass =
-  "h-12 w-full rounded-md border border-ink/15 bg-white px-3.5 text-base text-ink outline-none transition-colors placeholder:text-ink/35 focus:border-[#C00000] focus:ring-2 focus:ring-[#C00000]/20";
+  "h-11 w-full rounded-md border border-black/15 bg-white px-3.5 text-base text-ink outline-none transition-colors placeholder:text-ink/35 focus:border-[#1A1315]/60 focus:ring-2 focus:ring-[#1A1315]/10";
 
 export function LoginForm({ next }: { next: string }) {
   const [user, setUser] = useState("");
@@ -38,9 +38,9 @@ export function LoginForm({ next }: { next: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
+    <form onSubmit={submit} className="mt-7 space-y-5" noValidate>
       <div className="space-y-1.5">
-        <label htmlFor="login-user" className="block text-sm font-medium text-ink/80">
+        <label htmlFor="login-user" className="block text-sm font-medium text-[#1A1315]/80">
           Usuário
         </label>
         <input
@@ -58,7 +58,7 @@ export function LoginForm({ next }: { next: string }) {
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="login-password" className="block text-sm font-medium text-ink/80">
+        <label htmlFor="login-password" className="block text-sm font-medium text-[#1A1315]/80">
           Senha
         </label>
         <div className="relative">
@@ -93,7 +93,7 @@ export function LoginForm({ next }: { next: string }) {
       <button
         type="submit"
         disabled={sending || !user || !password}
-        className="h-12 w-full rounded-md bg-[#C00000] text-base font-semibold text-white transition-colors hover:bg-[#A30000] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C00000] disabled:cursor-not-allowed disabled:bg-[#C00000]/45"
+        className="h-11 w-full rounded-md bg-[#C00000] text-base font-semibold text-white transition-colors hover:bg-[#A30000] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C00000] disabled:cursor-not-allowed disabled:bg-[#C00000]/45"
       >
         {sending ? "Entrando..." : "Entrar"}
       </button>

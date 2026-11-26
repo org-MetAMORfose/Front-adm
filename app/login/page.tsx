@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/app/login/LoginForm";
+import { Ribbon } from "@/app/login/Ribbon";
 import { ADMIN_SESSION_COOKIE, safeNextPath, verifyAdminSession } from "@/lib/adminSession";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +21,8 @@ const TAIL = "M19 50L26 54L24 61L38 76L17 66L22 59Z";
 function Mark({ className }: { className?: string }) {
   return (
     <svg viewBox="14 4 72 88" className={className} aria-hidden>
-      <path fill="#E0262B" d={WING} />
-      <path fill="#F7F3F2" d={TAIL} />
+      <path fill="#C00000" d={WING} />
+      <path fill="#1A1315" d={TAIL} />
     </svg>
   );
 }
@@ -36,35 +37,26 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (user && password && (await verifyAdminSession(session, user, password))) redirect(target);
 
   return (
-    <main className={`${oswald.variable} flex min-h-screen flex-col bg-mist text-ink lg:flex-row`}>
-      <section className="relative flex h-36 shrink-0 flex-col justify-between overflow-hidden bg-[#1A1315] px-4 py-5 text-[#F7F3F2] sm:px-8 lg:h-auto lg:w-[42%] lg:max-w-[560px] lg:px-12 lg:py-12">
-        <svg
-          viewBox="14 4 72 88"
-          className="pointer-events-none absolute -right-20 -top-6 h-[170%] text-[#C00000] lg:-right-[38%] lg:top-[16%] lg:h-[80%]"
-          aria-hidden
-        >
-          <path fill="currentColor" d={WING} />
-        </svg>
+    <main className={`${oswald.variable} relative flex min-h-screen flex-col overflow-hidden bg-white text-[#1A1315]`}>
+      <Ribbon className="pointer-events-none absolute right-0 top-0 hidden h-auto w-full md:block" />
 
-        <div className="relative flex items-center gap-3">
-          <Mark className="h-9 w-auto" />
-          <span className="font-[family-name:var(--font-oswald)] text-2xl font-medium tracking-wide">MetAMORfose</span>
+      <div className="pointer-events-none absolute inset-y-0 left-[100px] top-14 hidden border-l border-black/[0.06] xl:block" />
+      <div className="pointer-events-none absolute inset-y-0 right-[100px] top-14 hidden border-l border-black/[0.06] xl:block" />
+
+      <header className="relative flex h-14 shrink-0 items-center border-b border-black/[0.06] px-4 sm:px-8">
+        <div className="flex items-center gap-2">
+          <Mark className="h-7 w-auto" />
+          <span className="font-[family-name:var(--font-oswald)] text-xl font-medium tracking-wide">MetAMORfose</span>
         </div>
+      </header>
 
-        <p className="relative hidden max-w-[18rem] text-base leading-relaxed text-[#F7F3F2]/75 lg:block">
-          Painel da equipe: conversas do chatbot, distribuição de pacientes e acolhimento imediato.
-        </p>
-      </section>
-
-      <section className="flex flex-1 items-start justify-center px-4 py-10 sm:px-8 lg:items-center lg:py-12">
-        <div className="w-full max-w-[22.5rem]">
-          <h1 className="font-[family-name:var(--font-oswald)] text-[2.125rem] font-semibold leading-tight text-[#1A1315]">
-            Entrar no painel
-          </h1>
-          <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink/65">Use o usuário e a senha da equipe.</p>
+      <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-12">
+        <section className="w-full max-w-[28rem] rounded-lg border border-black/[0.06] bg-white px-6 py-8 shadow-[0_18px_50px_-18px_rgba(26,19,21,0.28)] sm:px-10 sm:py-10">
+          <h1 className="text-[1.375rem] font-bold tracking-tight">Entrar no painel</h1>
           <LoginForm next={target} />
-        </div>
-      </section>
+        </section>
+        <p className="mt-6 text-xs text-[#1A1315]/50">© {new Date().getFullYear()} MetAMORfose. Todos os direitos reservados.</p>
+      </div>
     </main>
   );
 }
