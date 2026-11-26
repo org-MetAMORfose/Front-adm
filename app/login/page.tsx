@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/app/login/LoginForm";
-import { Ribbon } from "@/app/login/Ribbon";
 import { ADMIN_SESSION_COOKIE, safeNextPath, verifyAdminSession } from "@/lib/adminSession";
 
 export const dynamic = "force-dynamic";
@@ -37,26 +36,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (user && password && (await verifyAdminSession(session, user, password))) redirect(target);
 
   return (
-    <main className={`${oswald.variable} relative flex min-h-screen flex-col overflow-hidden bg-white text-[#1A1315]`}>
-      <Ribbon className="pointer-events-none absolute right-0 top-0 hidden h-auto w-full md:block" />
-
-      <div className="pointer-events-none absolute inset-y-0 left-[100px] top-14 hidden border-l border-black/[0.06] xl:block" />
-      <div className="pointer-events-none absolute inset-y-0 right-[100px] top-14 hidden border-l border-black/[0.06] xl:block" />
-
-      <header className="relative flex h-14 shrink-0 items-center border-b border-black/[0.06] px-4 sm:px-8">
-        <div className="flex items-center gap-2">
-          <Mark className="h-7 w-auto" />
-          <span className="font-[family-name:var(--font-oswald)] text-xl font-medium tracking-wide">MetAMORfose</span>
-        </div>
-      </header>
-
-      <div className="relative flex flex-1 flex-col items-center justify-center px-4 py-12">
-        <section className="w-full max-w-[28rem] rounded-lg border border-black/[0.06] bg-white px-6 py-8 shadow-[0_18px_50px_-18px_rgba(26,19,21,0.28)] sm:px-10 sm:py-10">
-          <h1 className="text-[1.375rem] font-bold tracking-tight">Entrar no painel</h1>
-          <LoginForm next={target} />
-        </section>
-        <p className="mt-6 text-xs text-[#1A1315]/50">© {new Date().getFullYear()} MetAMORfose. Todos os direitos reservados.</p>
+    <main className={`${oswald.variable} flex min-h-screen flex-col items-center justify-center bg-white px-4 py-12 text-[#1A1315]`}>
+      <div className="mb-8 flex items-center gap-2.5">
+        <Mark className="h-10 w-auto" />
+        <span className="font-[family-name:var(--font-oswald)] text-[1.75rem] font-medium tracking-wide">MetAMORfose</span>
       </div>
+
+      <section className="w-full max-w-[28rem] rounded-lg border border-black/[0.06] bg-white px-6 py-8 shadow-[0_18px_50px_-18px_rgba(26,19,21,0.28)] sm:px-10 sm:py-10">
+        <h1 className="text-[1.375rem] font-bold tracking-tight">Entrar no painel</h1>
+        <LoginForm next={target} />
+      </section>
+      <p className="mt-6 text-xs text-[#1A1315]/50">© {new Date().getFullYear()} MetAMORfose. Todos os direitos reservados.</p>
     </main>
   );
 }
